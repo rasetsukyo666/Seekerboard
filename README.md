@@ -4,9 +4,9 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 
 ## Current scope
 
-- Compose Android companion-app shell
+- Compose Android settings/onboarding app
 - Android IME module with a private keyboard service scaffold
-- Companion-app keyboard customization controls
+- Keyboard utility strip with wallet, clipboard, theme, and settings drawers
 - Solana Mobile Wallet Adapter connect / disconnect
 - Sign In with Solana
 - Detached message signing
@@ -25,8 +25,8 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 
 ## Modules
 
-- `:app` companion app for wallet connect, review, staking, account management, and keyboard settings
-- `:ime` private keyboard service with wallet-launch key and basic customization support
+- `:app` settings/onboarding app only
+- `:ime` private keyboard service with wallet, clipboard, theme, and settings utility drawers
 
 ## Build
 
@@ -53,4 +53,4 @@ Build the IME library:
 1. Extract the transaction-building logic from the prior React Native app into Kotlin services.
 2. Validate the native stake instruction account metas against device wallet signing.
 3. Add stake-account creation flow for first-time native staking.
-4. Expand the IME toward HeliBoard-level customization, layouts, and gesture behavior.
+4. Expand the IME toward HeliBoard-level customization, layouts, gesture behavior, and inline wallet operations.

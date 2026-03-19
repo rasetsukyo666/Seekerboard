@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.androidlord.seekerwallet.theme.SeekerTheme
 import com.androidlord.seekerwallet.theme.ThemePreset
-import com.androidlord.seekerwallet.wallet.SeekerWalletScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -14,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SeekerTheme(themePreset = ThemePreset.SAND) {
-                SeekerWalletScreen()
+                SettingsScreen()
             }
         }
     }
