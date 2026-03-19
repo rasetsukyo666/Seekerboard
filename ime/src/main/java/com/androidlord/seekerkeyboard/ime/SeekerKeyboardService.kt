@@ -544,11 +544,9 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun maybeAutocorrectCurrentWord(settings: KeyboardSettings) {
         if (!settings.autocorrectEnabled) return
-        val current = currentWordBeforeCursor()
-        val suggestion = GlideTypingEngine.bestAutocorrect(settings.language, current) ?: return
-        if (suggestion.equals(current, ignoreCase = true)) return
-        replaceCurrentWord(suggestion)
-        ephemeralHint = "$current -> $suggestion"
+        // Forced replacement is currently too error-prone for this keyboard.
+        // Keep suggestions/manual picks available, but do not auto-apply changes.
+        return
     }
 
     private fun replaceCurrentWord(replacement: String) {
