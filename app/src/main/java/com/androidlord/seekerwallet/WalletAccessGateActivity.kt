@@ -5,16 +5,19 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
 import com.androidlord.seekerkeyboard.ime.WalletAccessGuardStore
 import com.androidlord.seekerwallet.data.WalletSessionStore
 
 class WalletAccessGateActivity : AppCompatActivity() {
     private lateinit var accessGuardStore: WalletAccessGuardStore
+    private lateinit var settingsStore: KeyboardSettingsStore
     private lateinit var sessionStore: WalletSessionStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         accessGuardStore = WalletAccessGuardStore(applicationContext)
+        settingsStore = KeyboardSettingsStore(applicationContext)
         sessionStore = WalletSessionStore(applicationContext)
 
         val biometricManager = BiometricManager.from(this)
@@ -33,7 +36,7 @@ class WalletAccessGateActivity : AppCompatActivity() {
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    accessGuardStore.unlock()
+                    accessGuardStore.unlock(settingsStore.load().walletUnlockMode)
                     if (intent?.getBooleanExtra("open_wallet_on_success", false) == true) {
                         accessGuardStore.markPendingOpenWallet()
                     }

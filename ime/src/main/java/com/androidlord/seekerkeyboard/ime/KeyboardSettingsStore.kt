@@ -28,6 +28,13 @@ enum class KeyboardLanguage(val label: String) {
     PORTUGUESE("Portuguese"),
 }
 
+enum class WalletUnlockMode(val label: String) {
+    ALWAYS_PROMPT("Always prompt"),
+    UNTIL_CLOSE("Until close"),
+    TIMER_30S("30s"),
+    TIMER_2M("2m"),
+}
+
 data class KeyboardSettings(
     val theme: KeyboardTheme = KeyboardTheme.TEAL,
     val layoutMode: KeyboardLayoutMode = KeyboardLayoutMode.COMFORT,
@@ -44,6 +51,7 @@ data class KeyboardSettings(
     val autocorrectEnabled: Boolean = false,
     val suggestionsEnabled: Boolean = true,
     val glideTypingEnabled: Boolean = false,
+    val walletUnlockMode: WalletUnlockMode = WalletUnlockMode.ALWAYS_PROMPT,
     val consolidationSourceCountPreview: Int = 1,
     val wallpaperUri: String = "",
     val backgroundHex: String = "",
@@ -67,6 +75,8 @@ class KeyboardSettingsStore(context: Context) {
             ?: KeyboardLanguage.ENGLISH
         val font = KeyboardFont.entries.firstOrNull { it.name == prefs.getString(KEY_FONT, KeyboardFont.SYSTEM.name) }
             ?: KeyboardFont.SYSTEM
+        val walletUnlockMode = WalletUnlockMode.entries.firstOrNull { it.name == prefs.getString(KEY_WALLET_UNLOCK_MODE, WalletUnlockMode.ALWAYS_PROMPT.name) }
+            ?: WalletUnlockMode.ALWAYS_PROMPT
         return KeyboardSettings(
             theme = theme,
             layoutMode = layoutMode,
@@ -83,6 +93,7 @@ class KeyboardSettingsStore(context: Context) {
             autocorrectEnabled = prefs.getBoolean(KEY_AUTOCORRECT, false),
             suggestionsEnabled = prefs.getBoolean(KEY_SUGGESTIONS, true),
             glideTypingEnabled = prefs.getBoolean(KEY_GLIDE_TYPING, false),
+            walletUnlockMode = walletUnlockMode,
             consolidationSourceCountPreview = prefs.getInt(KEY_CONSOLIDATION_SOURCES, 1).coerceIn(1, 99),
             wallpaperUri = prefs.getString(KEY_WALLPAPER_URI, "").orEmpty(),
             backgroundHex = prefs.getString(KEY_BACKGROUND_HEX, "").orEmpty(),
@@ -155,6 +166,10 @@ class KeyboardSettingsStore(context: Context) {
         prefs.edit().putBoolean(KEY_GLIDE_TYPING, enabled).apply()
     }
 
+    fun saveWalletUnlockMode(mode: WalletUnlockMode) {
+        prefs.edit().putString(KEY_WALLET_UNLOCK_MODE, mode.name).apply()
+    }
+
     fun saveConsolidationSourceCountPreview(value: Int) {
         prefs.edit().putInt(KEY_CONSOLIDATION_SOURCES, value.coerceIn(1, 99)).apply()
     }
@@ -208,6 +223,7 @@ class KeyboardSettingsStore(context: Context) {
         private const val KEY_AUTOCORRECT = "autocorrect"
         private const val KEY_SUGGESTIONS = "suggestions"
         private const val KEY_GLIDE_TYPING = "glide_typing"
+        private const val KEY_WALLET_UNLOCK_MODE = "wallet_unlock_mode"
         private const val KEY_CONSOLIDATION_SOURCES = "consolidation_sources"
         private const val KEY_WALLPAPER_URI = "wallpaper_uri"
         private const val KEY_BACKGROUND_HEX = "background_hex"

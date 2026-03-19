@@ -42,6 +42,7 @@ import com.androidlord.seekerkeyboard.ime.KeyboardLanguage
 import com.androidlord.seekerkeyboard.ime.KeyboardLayoutMode
 import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
 import com.androidlord.seekerkeyboard.ime.KeyboardTheme
+import com.androidlord.seekerkeyboard.ime.WalletUnlockMode
 import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
 import com.androidlord.seekerwallet.data.WalletSessionStore
 import com.androidlord.seekerwallet.wallet.SolanaCluster
@@ -269,6 +270,23 @@ fun SettingsScreen(
                             },
                             valueRange = 40f..76f,
                         )
+                    }
+                }
+            }
+            item {
+                SettingsCard("Wallet Security") {
+                    Text("Choose how long wallet controls stay unlocked after biometric or device PIN approval.", style = MaterialTheme.typography.bodyMedium)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        WalletUnlockMode.entries.forEach { option ->
+                            AssistChip(
+                                onClick = {
+                                    settingsStore.saveWalletUnlockMode(option)
+                                    refresh()
+                                },
+                                label = { Text(option.label) },
+                                enabled = option != settings.walletUnlockMode,
+                            )
+                        }
                     }
                 }
             }

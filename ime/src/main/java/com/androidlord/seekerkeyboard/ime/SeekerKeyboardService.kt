@@ -54,11 +54,14 @@ class SeekerKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        val unlockMode = settingsStore.load().walletUnlockMode
         if (walletAccessGuardStore.consumePendingOpenWallet()) {
             walletDrawerTab = WalletDrawerTab.OVERVIEW
             activePanel = UtilityPanel.WALLET
             keyboardLayer = KeyboardLayer.ALPHA
-            walletAccessGuardStore.lock()
+            if (unlockMode == WalletUnlockMode.ALWAYS_PROMPT) {
+                walletAccessGuardStore.lock()
+            }
         }
         renderKeyboard()
     }
@@ -70,6 +73,10 @@ class SeekerKeyboardService : InputMethodService() {
         alternateReplacementLength = 0
         suggestions = emptyList()
         topStripMode = TopStripMode.SUGGESTIONS
+        val unlockMode = settingsStore.load().walletUnlockMode
+        if (unlockMode == WalletUnlockMode.ALWAYS_PROMPT || unlockMode == WalletUnlockMode.UNTIL_CLOSE) {
+            walletAccessGuardStore.lock()
+        }
         ephemeralHint = ""
     }
 
@@ -80,6 +87,10 @@ class SeekerKeyboardService : InputMethodService() {
         alternateReplacementLength = 0
         suggestions = emptyList()
         topStripMode = TopStripMode.SUGGESTIONS
+        val unlockMode = settingsStore.load().walletUnlockMode
+        if (unlockMode == WalletUnlockMode.ALWAYS_PROMPT || unlockMode == WalletUnlockMode.UNTIL_CLOSE) {
+            walletAccessGuardStore.lock()
+        }
         ephemeralHint = ""
     }
 
@@ -146,7 +157,9 @@ class SeekerKeyboardService : InputMethodService() {
         }
         if (activePanel == UtilityPanel.WALLET && key != "wallet") {
             activePanel = UtilityPanel.NONE
-            walletAccessGuardStore.lock()
+            if (settings.walletUnlockMode == WalletUnlockMode.ALWAYS_PROMPT || settings.walletUnlockMode == WalletUnlockMode.UNTIL_CLOSE) {
+                walletAccessGuardStore.lock()
+            }
             keyboardLayer = KeyboardLayer.ALPHA
         }
         when (key) {
@@ -371,18 +384,29 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun togglePanel(panel: UtilityPanel) {
         if (panel == UtilityPanel.WALLET && activePanel != panel) {
-            walletAccessGuardStore.lock()
-            launchWalletAccessGate()
-            ephemeralHint = "unlock wallet"
-            return
+            val unlockMode = settingsStore.load().walletUnlockMode
+            if (!walletAccessGuardStore.isUnlocked(unlockMode)) {
+                if (unlockMode == WalletUnlockMode.ALWAYS_PROMPT) {
+                    walletAccessGuardStore.lock()
+                }
+                launchWalletAccessGate()
+                ephemeralHint = "unlock wallet"
+                return
+            }
         }
         if (panel == UtilityPanel.WALLET && activePanel == panel) {
-            walletAccessGuardStore.lock()
+            val unlockMode = settingsStore.load().walletUnlockMode
+            if (unlockMode == WalletUnlockMode.ALWAYS_PROMPT || unlockMode == WalletUnlockMode.UNTIL_CLOSE) {
+                walletAccessGuardStore.lock()
+            }
             activePanel = UtilityPanel.NONE
             return
         }
         if (activePanel == UtilityPanel.WALLET && panel != UtilityPanel.WALLET) {
-            walletAccessGuardStore.lock()
+            val unlockMode = settingsStore.load().walletUnlockMode
+            if (unlockMode == WalletUnlockMode.ALWAYS_PROMPT || unlockMode == WalletUnlockMode.UNTIL_CLOSE) {
+                walletAccessGuardStore.lock()
+            }
         }
         if (panel == UtilityPanel.WALLET) {
             walletDrawerTab = WalletDrawerTab.OVERVIEW
