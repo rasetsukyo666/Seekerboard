@@ -36,12 +36,13 @@ data class KeyboardSettings(
     val customFontUri: String = "",
     val showNumberRow: Boolean = true,
     val showWalletKey: Boolean = true,
-    val keyHeightDp: Int = 52,
+    val keyHeightDp: Int = 56,
     val hapticsEnabled: Boolean = false,
     val showPressEffect: Boolean = true,
+    val showKeyBorders: Boolean = false,
     val useSquareKeys: Boolean = false,
     val autocorrectEnabled: Boolean = false,
-    val suggestionsEnabled: Boolean = false,
+    val suggestionsEnabled: Boolean = true,
     val glideTypingEnabled: Boolean = false,
     val consolidationSourceCountPreview: Int = 1,
     val wallpaperUri: String = "",
@@ -74,12 +75,13 @@ class KeyboardSettingsStore(context: Context) {
             customFontUri = prefs.getString(KEY_CUSTOM_FONT_URI, "").orEmpty(),
             showNumberRow = prefs.getBoolean(KEY_NUMBER_ROW, true),
             showWalletKey = prefs.getBoolean(KEY_WALLET_KEY, true),
-            keyHeightDp = prefs.getInt(KEY_KEY_HEIGHT, 52).coerceIn(40, 76),
+            keyHeightDp = prefs.getInt(KEY_KEY_HEIGHT, 56).coerceIn(40, 76),
             hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, false),
             showPressEffect = prefs.getBoolean(KEY_PRESS_EFFECT, true),
+            showKeyBorders = prefs.getBoolean(KEY_KEY_BORDERS, false),
             useSquareKeys = prefs.getBoolean(KEY_SQUARE_KEYS, false),
             autocorrectEnabled = prefs.getBoolean(KEY_AUTOCORRECT, false),
-            suggestionsEnabled = prefs.getBoolean(KEY_SUGGESTIONS, false),
+            suggestionsEnabled = prefs.getBoolean(KEY_SUGGESTIONS, true),
             glideTypingEnabled = prefs.getBoolean(KEY_GLIDE_TYPING, false),
             consolidationSourceCountPreview = prefs.getInt(KEY_CONSOLIDATION_SOURCES, 1).coerceIn(1, 99),
             wallpaperUri = prefs.getString(KEY_WALLPAPER_URI, "").orEmpty(),
@@ -131,6 +133,10 @@ class KeyboardSettingsStore(context: Context) {
 
     fun savePressEffect(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_PRESS_EFFECT, enabled).apply()
+    }
+
+    fun saveKeyBorders(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KEY_BORDERS, enabled).apply()
     }
 
     fun saveSquareKeys(enabled: Boolean) {
@@ -197,6 +203,7 @@ class KeyboardSettingsStore(context: Context) {
         private const val KEY_KEY_HEIGHT = "key_height"
         private const val KEY_HAPTICS = "haptics"
         private const val KEY_PRESS_EFFECT = "press_effect"
+        private const val KEY_KEY_BORDERS = "key_borders"
         private const val KEY_SQUARE_KEYS = "square_keys"
         private const val KEY_AUTOCORRECT = "autocorrect"
         private const val KEY_SUGGESTIONS = "suggestions"

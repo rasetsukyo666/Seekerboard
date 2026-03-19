@@ -239,6 +239,10 @@ fun SettingsScreen(
                         settingsStore.savePressEffect(it)
                         refresh()
                     }
+                    ToggleRow("Key borders", settings.showKeyBorders) {
+                        settingsStore.saveKeyBorders(it)
+                        refresh()
+                    }
                     ToggleRow("Square keys", settings.useSquareKeys) {
                         settingsStore.saveSquareKeys(it)
                         refresh()

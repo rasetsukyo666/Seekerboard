@@ -44,15 +44,17 @@ object GlideTypingEngine {
 
     fun suggestCorrections(language: KeyboardLanguage, rawWord: String, limit: Int = 3): List<String> {
         val normalized = normalize(rawWord)
-        if (normalized.length < 3) return emptyList()
-        return lexicon(language)
-            .distinct()
+        if (normalized.isBlank()) return emptyList()
+        val words = lexicon(language).distinct()
+        val prefixMatches = words
+            .filter { it.startsWith(normalized) && it != normalized }
+            .sortedWith(compareBy<String>({ it.length }).thenBy { it })
+        val fuzzyMatches = words
             .map { it to score(normalized, normalize(it)) }
-            .filter { (_, score) -> score > 10 }
+            .filter { (word, score) -> word != normalized && score > if (normalized.length < 3) 14 else 8 }
             .sortedByDescending { (_, score) -> score }
             .map { it.first }
-            .filter { it != normalized }
-            .take(limit)
+        return (prefixMatches + fuzzyMatches).distinct().take(limit)
     }
 
     fun bestAutocorrect(language: KeyboardLanguage, rawWord: String): String? {

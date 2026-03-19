@@ -31,6 +31,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var alternateAnchorRatio: Float = 0.5f
     private var alternateReplacementLength: Int = 0
     private var suggestions: List<String> = emptyList()
+    private var lastClipboardPreview: String = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -90,7 +91,10 @@ class SeekerKeyboardService : InputMethodService() {
         val walletSnapshot = walletStore.load()
         val clip = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)
         val clipRaw = clip?.toString().orEmpty()
-        clipboardHistoryStore.record(clip)
+        if (clipRaw.isNotBlank() && clipRaw != lastClipboardPreview) {
+            clipboardHistoryStore.record(clip)
+            lastClipboardPreview = clipRaw
+        }
         selectedStakeIndex = selectedStakeIndex.coerceIn(0, (walletSnapshot.stakeAccountsPreview.size - 1).coerceAtLeast(0))
         val clipPreview = keyboardView.clipboardPreviewFrom(
             clip,

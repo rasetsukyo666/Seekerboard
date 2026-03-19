@@ -8,6 +8,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -15,6 +17,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.Space
 import android.widget.TextView
 import java.util.Locale
@@ -75,12 +78,14 @@ class SeekerKeyboardView(
 ) : LinearLayout(context) {
     private val glideTargets = mutableListOf<GlideKeyTarget>()
     private val glidePath = mutableListOf<String>()
+    private val repeatHandler = Handler(Looper.getMainLooper())
 
     private var cachedWallpaperUri: String? = null
     private var cachedWallpaper: BitmapDrawable? = null
     private var cachedFontUri: String? = null
     private var cachedTypeface: Typeface? = null
     private var glideActive = false
+    private var keyPreviewPopup: PopupWindow? = null
 
     init {
         orientation = VERTICAL
@@ -166,17 +171,17 @@ class SeekerKeyboardView(
             KeyboardLanguage.ENGLISH -> listOf(
                 listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
                 listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
-                listOf("shift", "*", "'", ":", ";", "!", "?", "%", "⌫"),
+                listOf("shift", "*", "'", ":", ";", "!", "%", "?", "⌫"),
             )
             KeyboardLanguage.SPANISH -> listOf(
                 listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
                 listOf("@", "#", "€", "&", "-", "+", "(", ")", "/", "\""),
-                listOf("shift", "*", "'", ":", ";", "¡", "¿", "%", "⌫"),
+                listOf("shift", "*", "'", ":", ";", "¡", "%", "¿", "⌫"),
             )
             KeyboardLanguage.PORTUGUESE -> listOf(
                 listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
                 listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
-                listOf("shift", "*", "'", ":", ";", "!", "?", "º", "⌫"),
+                listOf("shift", "*", "'", ":", ";", "!", "º", "?", "⌫"),
             )
         }
     }
@@ -610,22 +615,26 @@ class SeekerKeyboardView(
             glideTargets += GlideKeyTarget(label, button)
             attachLetterTouchBehavior(button, label, settings, panelState, onKeyPress, onUtilityPress)
         } else {
-            button.setOnClickListener {
-                when (label) {
-                    "shift" -> onUtilityPress("action:cycle_shift")
-                    "123" -> onUtilityPress("action:toggle_symbols")
-                    else -> onKeyPress(resolveKeyValue(label, panelState))
+            when (label) {
+                "space" -> button.setOnTouchListener(spaceTouchListener(button, settings, onKeyPress, onUtilityPress))
+                "⌫" -> button.setOnTouchListener(deleteTouchListener(button, settings, onUtilityPress))
+                else -> {
+                    button.setOnClickListener {
+                        when (label) {
+                            "shift" -> onUtilityPress("action:cycle_shift")
+                            "123" -> onUtilityPress("action:toggle_symbols")
+                            else -> onKeyPress(resolveKeyValue(label, panelState))
+                        }
+                    }
+                    alternatesMap[label]?.let { alternates ->
+                        button.setOnLongClickListener {
+                            val anchor = anchorRatioFor(button)
+                            onUtilityPress("action:show_alts:$anchor:${alternates.joinToString("|")}")
+                            true
+                        }
+                    }
+                    button.setOnTouchListener(previewTouchListener(button, settings, displayLabel(label, panelState)))
                 }
-            }
-            alternatesMap[label]?.let { alternates ->
-                button.setOnLongClickListener {
-                    val anchor = anchorRatioFor(button)
-                    onUtilityPress("action:show_alts:$anchor:${alternates.joinToString("|")}")
-                    true
-                }
-            }
-            if (label == "space" || label == "⌫") {
-                button.setOnTouchListener(spaceOrDeleteGestureListener(label, onUtilityPress))
             }
         }
         return button
@@ -648,6 +657,7 @@ class SeekerKeyboardView(
         val longPress = Runnable {
             if (!moved && alternates.isNotEmpty()) {
                 longTriggered = true
+                dismissKeyPreview()
                 onUtilityPress("action:show_alts:${anchorRatioFor(button)}:${alternates.joinToString("|")}")
             }
         }
@@ -662,6 +672,7 @@ class SeekerKeyboardView(
                     moved = false
                     longTriggered = false
                     applyPressEffect(button, settings, true)
+                    showKeyPreview(button, resolveKeyValue(label, panelState), settings)
                     button.postDelayed(longPress, (ViewConfiguration.getLongPressTimeout() * 0.72f).toLong())
                     true
                 }
@@ -671,6 +682,7 @@ class SeekerKeyboardView(
                     if (!moved && abs(dx) + abs(dy) > touchSlop) {
                         moved = true
                         button.removeCallbacks(longPress)
+                        dismissKeyPreview()
                         if (settings.glideTypingEnabled) {
                             beginGlide(resolveKeyValue(label, panelState))
                         }
@@ -684,6 +696,7 @@ class SeekerKeyboardView(
                 MotionEvent.ACTION_UP -> {
                     button.removeCallbacks(longPress)
                     applyPressEffect(button, settings, false)
+                    dismissKeyPreview()
                     when {
                         longTriggered -> true
                         settings.glideTypingEnabled && glideActive && glidePath.isNotEmpty() -> {
@@ -699,6 +712,7 @@ class SeekerKeyboardView(
                 MotionEvent.ACTION_CANCEL -> {
                     button.removeCallbacks(longPress)
                     applyPressEffect(button, settings, false)
+                    dismissKeyPreview()
                     glideActive = false
                     glidePath.clear()
                     true
@@ -739,7 +753,12 @@ class SeekerKeyboardView(
         }?.label
     }
 
-    private fun spaceOrDeleteGestureListener(label: String, onUtilityPress: (String) -> Unit): View.OnTouchListener {
+    private fun spaceTouchListener(
+        button: Button,
+        settings: KeyboardSettings,
+        onKeyPress: (String) -> Unit,
+        onUtilityPress: (String) -> Unit,
+    ): View.OnTouchListener {
         return object : View.OnTouchListener {
             private var downX = 0f
             private var consumed = false
@@ -749,24 +768,117 @@ class SeekerKeyboardView(
                     MotionEvent.ACTION_DOWN -> {
                         downX = event.x
                         consumed = false
+                        applyPressEffect(button, settings, true)
+                        showKeyPreview(button, "space", settings)
+                        return true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         val deltaX = event.x - downX
                         if (!consumed && abs(deltaX) > dp(28)) {
                             consumed = true
-                            when (label) {
-                                "space" -> onUtilityPress(if (deltaX > 0) "action:cursor_right" else "action:cursor_left")
-                                "⌫" -> onUtilityPress(if (deltaX > 0) "action:delete_char" else "action:delete_word")
-                            }
+                            onUtilityPress(if (deltaX > 0) "action:cursor_right" else "action:cursor_left")
+                            dismissKeyPreview()
                             return true
                         }
                     }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    MotionEvent.ACTION_UP -> {
+                        applyPressEffect(button, settings, false)
+                        dismissKeyPreview()
                         if (consumed) return true
+                        onKeyPress("space")
+                        return true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        applyPressEffect(button, settings, false)
+                        dismissKeyPreview()
+                        if (consumed) return true
+                        return true
                     }
                 }
                 return false
             }
+        }
+    }
+
+    private fun deleteTouchListener(
+        button: Button,
+        settings: KeyboardSettings,
+        onUtilityPress: (String) -> Unit,
+    ): View.OnTouchListener {
+        return object : View.OnTouchListener {
+            private var downX = 0f
+            private var consumed = false
+            private var repeating = false
+            private val repeatDelete = object : Runnable {
+                override fun run() {
+                    repeating = true
+                    consumed = true
+                    onUtilityPress("action:delete_char")
+                    repeatHandler.postDelayed(this, 58L)
+                }
+            }
+
+            override fun onTouch(v: View?, event: MotionEvent): Boolean {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = event.x
+                        consumed = false
+                        repeating = false
+                        applyPressEffect(button, settings, true)
+                        showKeyPreview(button, "⌫", settings)
+                        repeatHandler.postDelayed(repeatDelete, 350L)
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val deltaX = event.x - downX
+                        if (!consumed && abs(deltaX) > dp(28)) {
+                            consumed = true
+                            repeatHandler.removeCallbacks(repeatDelete)
+                            onUtilityPress(if (deltaX > 0) "action:delete_char" else "action:delete_word")
+                            dismissKeyPreview()
+                            return true
+                        }
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        repeatHandler.removeCallbacks(repeatDelete)
+                        applyPressEffect(button, settings, false)
+                        dismissKeyPreview()
+                        if (!consumed && !repeating) {
+                            onUtilityPress("action:delete_char")
+                        }
+                        return true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        repeatHandler.removeCallbacks(repeatDelete)
+                        applyPressEffect(button, settings, false)
+                        dismissKeyPreview()
+                        return true
+                    }
+                }
+                return false
+            }
+        }
+    }
+
+    private fun previewTouchListener(
+        button: Button,
+        settings: KeyboardSettings,
+        previewText: String,
+    ): View.OnTouchListener {
+        return View.OnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    applyPressEffect(button, settings, true)
+                    if (previewText.length <= 2 || previewText.firstOrNull()?.isLetterOrDigit() == true) {
+                        showKeyPreview(button, previewText, settings)
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    applyPressEffect(button, settings, false)
+                    dismissKeyPreview()
+                }
+            }
+            false
         }
     }
 
@@ -811,11 +923,11 @@ class SeekerKeyboardView(
             }
             "wallet" -> 1.55f
             "enter", "shift", "123", "⌫" -> when (settings.layoutMode) {
-                KeyboardLayoutMode.COMPACT -> 1.35f
-                KeyboardLayoutMode.COMFORT -> 1.45f
-                KeyboardLayoutMode.THUMB -> 1.55f
+                KeyboardLayoutMode.COMPACT -> 1.28f
+                KeyboardLayoutMode.COMFORT -> 1.38f
+                KeyboardLayoutMode.THUMB -> 1.48f
             }
-            else -> 1f
+            else -> 0.96f
         }
     }
 
@@ -917,9 +1029,9 @@ class SeekerKeyboardView(
     private fun cornerRadius(settings: KeyboardSettings, isSpace: Boolean): Int {
         if (settings.useSquareKeys) return if (isSpace) 10 else 8
         return when (settings.layoutMode) {
-            KeyboardLayoutMode.COMPACT -> 14
-            KeyboardLayoutMode.COMFORT -> 16
-            KeyboardLayoutMode.THUMB -> if (isSpace) 24 else 18
+            KeyboardLayoutMode.COMPACT -> 10
+            KeyboardLayoutMode.COMFORT -> 12
+            KeyboardLayoutMode.THUMB -> if (isSpace) 18 else 14
         }
     }
 
@@ -997,7 +1109,13 @@ class SeekerKeyboardView(
 
     private fun applyPressEffect(button: Button, settings: KeyboardSettings, pressed: Boolean) {
         if (!settings.showPressEffect) return
-        button.animate().scaleX(if (pressed) 0.96f else 1f).scaleY(if (pressed) 0.96f else 1f).alpha(if (pressed) 0.9f else 1f).setDuration(45).start()
+        button.animate()
+            .scaleX(if (pressed) 0.97f else 1f)
+            .scaleY(if (pressed) 0.97f else 1f)
+            .translationY(if (pressed) -dpFloat(1) else 0f)
+            .alpha(if (pressed) 0.92f else 1f)
+            .setDuration(40)
+            .start()
     }
 
     private fun gradientDrawableForTheme(settings: KeyboardSettings): GradientDrawable {
@@ -1037,7 +1155,9 @@ class SeekerKeyboardView(
             intArrayOf(Color.parseColor(top), Color.parseColor(middle), Color.parseColor(bottom))
         ).apply {
             cornerRadius = dpFloat(cornerRadius(settings, false))
-            setStroke(dp(1), Color.parseColor(stroke))
+            if (settings.showKeyBorders) {
+                setStroke(dp(1), Color.parseColor(stroke))
+            }
         }
     }
 
@@ -1064,8 +1184,40 @@ class SeekerKeyboardView(
             intArrayOf(Color.parseColor(palette[0]), Color.parseColor(palette[1]), Color.parseColor(palette[2]))
         ).apply {
             cornerRadius = dpFloat(radius)
-            setStroke(dp(1), Color.parseColor(palette[3]))
+            if (settings.showKeyBorders) {
+                setStroke(dp(1), Color.parseColor(palette[3]))
+            }
         }
+    }
+
+    private fun showKeyPreview(button: Button, value: String, settings: KeyboardSettings) {
+        dismissKeyPreview()
+        if (value.isBlank()) return
+        val preview = TextView(context).apply {
+            text = value
+            gravity = Gravity.CENTER
+            textSize = if (value.length > 1) 18f else 24f
+            typeface = resolvedTypeface(settings)
+            setTextColor(Color.BLACK)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(18))
+        }
+        keyPreviewPopup = PopupWindow(preview, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false).apply {
+            isTouchable = false
+            isFocusable = false
+            isClippingEnabled = false
+        }
+        preview.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val location = IntArray(2)
+        button.getLocationOnScreen(location)
+        val x = (location[0] + button.width / 2f - preview.measuredWidth / 2f).toInt()
+        val y = (location[1] - preview.measuredHeight - dp(8)).toInt()
+        keyPreviewPopup?.showAtLocation(this, Gravity.NO_GRAVITY, x, y)
+    }
+
+    private fun dismissKeyPreview() {
+        keyPreviewPopup?.dismiss()
+        keyPreviewPopup = null
     }
 
     private fun resolvedTypeface(settings: KeyboardSettings): Typeface? {
