@@ -435,30 +435,35 @@ class SeekerKeyboardView(
         card.addView(panelMeta("cluster", panelState.walletSnapshot.clusterName.lowercase(), settings))
         when (panelState.walletTab) {
             WalletDrawerTab.OVERVIEW -> {
+                card.addView(panelText("SOL", settings))
                 card.addView(panelMeta("balance", panelState.walletSnapshot.totalBalanceUsd, settings))
-                card.addView(panelMeta("skr", "${panelState.walletSnapshot.skrStakedAmount} staked · ${panelState.walletSnapshot.skrWithdrawableAmount} ready", settings))
-                panelState.walletSnapshot.unifiedAccounts.take(3).forEach { account ->
+                panelState.walletSnapshot.unifiedAccounts.filter { it.title != "SKR Position" }.take(3).forEach { account ->
                     card.addView(panelMeta(account.title.lowercase(), "${account.balanceLabel} · ${account.detailLabel}", settings))
                 }
                 card.addView(panelMeta("review", if (panelState.walletSnapshot.reviewRequired) "approval handoff active" else "direct", settings))
                 card.addView(panelMeta("send", "${panelState.drafts.sendAmountSol} SOL -> ${panelState.clipboardRaw.ifBlank { "clipboard target" }.let { if (it.length > 18) shortAddress(it) else it }}", settings))
                 card.addView(panelActions(settings, listOf("connect", "disconnect"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("send_less", "send_more", "send"), onUtilityPress))
+                card.addView(panelText("SKR", settings))
+                card.addView(panelMeta("position", "${panelState.walletSnapshot.skrStakedAmount} staked · ${panelState.walletSnapshot.skrWithdrawableAmount} ready", settings))
             }
             WalletDrawerTab.STAKE -> {
                 val selectedStake = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
+                card.addView(panelText("SOL Stake", settings))
                 card.addView(panelMeta("validator", "Solana Mobile", settings))
                 card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${formatLamports(it.lamports)}" } ?: "none", settings))
-                card.addView(panelMeta("skr", "${panelState.drafts.skrStakeAmount} stake · ${panelState.drafts.skrUnstakeAmount} unstake", settings))
+                card.addView(panelActions(settings, listOf("native_delegate", "native_deactivate", "native_withdraw"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("stake_prev", "stake_next"), onUtilityPress))
+                card.addView(panelText("SKR", settings))
+                card.addView(panelMeta("position", "${panelState.drafts.skrStakeAmount} stake · ${panelState.drafts.skrUnstakeAmount} unstake", settings))
                 card.addView(panelActions(settings, listOf("skr_less", "skr_more", "skr_stake"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("skr_unless", "skr_unmore", "skr_unstake"), onUtilityPress))
-                card.addView(panelActions(settings, listOf("skr_withdraw", "stake_prev", "stake_next"), onUtilityPress))
-                card.addView(panelActions(settings, listOf("native_delegate", "native_deactivate", "native_withdraw"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("skr_withdraw"), onUtilityPress))
             }
             WalletDrawerTab.ACCOUNTS -> {
                 val selectedStake = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
                 card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${it.stakeState}" } ?: "none", settings))
-                card.addView(panelMeta("merge", "${panelState.consolidationFeeQuote.sourceCount} src · ${panelState.consolidationFeeQuote.feeInSkr} SKR carry", settings))
+                card.addView(panelMeta("merge", "auto source set · ${panelState.consolidationFeeQuote.feeInSkr} SKR carry", settings))
                 card.addView(panelMeta("compat", consolidationHint(panelState), settings))
                 panelState.walletSnapshot.unifiedAccounts.forEach { account ->
                     card.addView(panelText("${account.title}: ${account.balanceLabel} · ${account.detailLabel}", settings))
@@ -468,7 +473,7 @@ class SeekerKeyboardView(
                     card.addView(panelText("$prefix ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)}", settings))
                 }
                 card.addView(panelActions(settings, listOf("stake_prev", "stake_next"), onUtilityPress))
-                card.addView(panelActions(settings, listOf("sources_down", "sources_up", "consolidate"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("consolidate"), onUtilityPress))
             }
         }
     }

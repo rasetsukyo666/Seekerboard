@@ -57,11 +57,11 @@ class WalletReviewActivity : ComponentActivity() {
                                 }
                             }
                         )
-                        finish()
+                        finishAndRemoveTask()
                     },
                     onCancel = {
                         reviewStore.clear()
-                        finish()
+                        finishAndRemoveTask()
                     },
                 )
             }

@@ -71,7 +71,7 @@ class WalletBridgeActivity : ComponentActivity() {
             }.onFailure { error ->
                 sessionStore.saveKeyboardStatus(error.message ?: "Keyboard wallet action failed.")
             }
-            finish()
+            finishAndRemoveTask()
         }
     }
 

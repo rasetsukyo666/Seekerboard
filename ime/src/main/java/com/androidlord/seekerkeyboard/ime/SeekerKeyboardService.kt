@@ -80,7 +80,7 @@ class SeekerKeyboardService : InputMethodService() {
         candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        if (::keyboardView.isInitialized) {
+        if (::keyboardView.isInitialized && (activePanel != UtilityPanel.NONE || alternateOptions.isNotEmpty())) {
             renderKeyboard()
         }
     }
@@ -168,7 +168,9 @@ class SeekerKeyboardService : InputMethodService() {
         if (key !in setOf("⌫", "space", "enter", "wallet") && shiftState == ShiftState.ONCE && keyboardLayer == KeyboardLayer.ALPHA) {
             shiftState = ShiftState.OFF
         }
-        renderKeyboard()
+        if (shouldRenderAfterKey(key, settings)) {
+            renderKeyboard()
+        }
     }
 
     private fun handleUtilityPress(action: String) {
@@ -441,11 +443,12 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun launchStakeAction(action: String) {
         val selected = walletStore.load().stakeAccountsPreview.getOrNull(selectedStakeIndex)
+        val autoSourceCount = walletStore.load().eligibleConsolidationSources.coerceIn(1, 3)
         val extras = buildMap {
             put("destination_stake_pubkey", selected?.pubkey.orEmpty())
             put("selected_stake_pubkey", selected?.pubkey.orEmpty())
             put("selected_stake_lamports", selected?.lamports?.toString().orEmpty())
-            put("consolidation_source_count", settingsStore.load().consolidationSourceCountPreview.toString())
+            put("consolidation_source_count", autoSourceCount.toString())
         }
         val title = when (action) {
             "native_delegate" -> "Delegate Native Stake"
@@ -462,7 +465,7 @@ class SeekerKeyboardService : InputMethodService() {
             else -> action
         }
         val detail = when (action) {
-            "consolidate" -> "Carries ${ConsolidationFeeModel.quote(settingsStore.load().consolidationSourceCountPreview).feeInSkr} SKR fee preview and lets the chain decide merge compatibility."
+            "consolidate" -> "Carries ${ConsolidationFeeModel.quote(autoSourceCount).feeInSkr} SKR fee preview and uses the best likely source set automatically."
             else -> "Approval opens outside the keyboard, then syncs state back into the IME."
         }
         launchWalletReview(
@@ -535,6 +538,15 @@ class SeekerKeyboardService : InputMethodService() {
         if (current.isBlank()) return
         inputConnection.deleteSurroundingText(current.length, 0)
         inputConnection.commitText(replacement, 1)
+    }
+
+    private fun shouldRenderAfterKey(key: String, settings: KeyboardSettings): Boolean {
+        if (activePanel != UtilityPanel.NONE) return true
+        if (alternateOptions.isNotEmpty()) return true
+        if (settings.suggestionsEnabled || settings.autocorrectEnabled) return true
+        if (key == "wallet" || key == "space" || key == "enter" || key == "⌫") return true
+        if (key.startsWith("glide:")) return true
+        return shiftState == ShiftState.ONCE
     }
 
     private fun shortStakeLabel(pubkey: String): String {
