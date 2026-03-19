@@ -27,6 +27,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var selectedStakeIndex: Int = 0
     private var keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA
     private var shiftState: ShiftState = ShiftState.OFF
+    private var topStripMode: TopStripMode = TopStripMode.SUGGESTIONS
     private var ephemeralHint: String = ""
     private var alternateOptions: List<String> = emptyList()
     private var alternateAnchorRatio: Float = 0.5f
@@ -67,6 +68,7 @@ class SeekerKeyboardService : InputMethodService() {
         alternateAnchorRatio = 0.5f
         alternateReplacementLength = 0
         suggestions = emptyList()
+        topStripMode = TopStripMode.SUGGESTIONS
         ephemeralHint = ""
     }
 
@@ -76,6 +78,7 @@ class SeekerKeyboardService : InputMethodService() {
         alternateAnchorRatio = 0.5f
         alternateReplacementLength = 0
         suggestions = emptyList()
+        topStripMode = TopStripMode.SUGGESTIONS
         ephemeralHint = ""
     }
 
@@ -124,6 +127,7 @@ class SeekerKeyboardService : InputMethodService() {
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
                 keyboardLayer = keyboardLayer,
                 shiftState = shiftState,
+                topStripMode = topStripMode,
                 ephemeralHint = ephemeralHint,
                 alternateOptions = alternateOptions,
                 alternateAnchorRatio = alternateAnchorRatio,
@@ -192,6 +196,7 @@ class SeekerKeyboardService : InputMethodService() {
     private fun handleUtilityPress(action: String) {
         when {
             action.startsWith("panel:") -> {
+                topStripMode = TopStripMode.TOOLS
                 val panel = when (action.removePrefix("panel:")) {
                     "wallet" -> UtilityPanel.WALLET
                     "clipboard" -> UtilityPanel.CLIPBOARD
@@ -250,6 +255,9 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:native_withdraw" -> launchStakeAction("native_withdraw")
             action == "action:consolidate" -> launchStakeAction("consolidate")
             action == "action:cycle_shift" -> cycleShiftState()
+            action == "action:toggle_top_strip" -> {
+                topStripMode = if (topStripMode == TopStripMode.SUGGESTIONS) TopStripMode.TOOLS else TopStripMode.SUGGESTIONS
+            }
             action == "action:toggle_symbols" -> toggleSymbols()
             action == "action:toggle_emoji" -> toggleEmoji()
             action.startsWith("action:hint:") -> ephemeralHint = action.removePrefix("action:hint:")

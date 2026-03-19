@@ -51,6 +51,11 @@ enum class ShiftState {
     CAPS,
 }
 
+enum class TopStripMode {
+    SUGGESTIONS,
+    TOOLS,
+}
+
 data class KeyboardPanelState(
     val activePanel: UtilityPanel = UtilityPanel.NONE,
     val walletTab: WalletDrawerTab = WalletDrawerTab.OVERVIEW,
@@ -65,6 +70,7 @@ data class KeyboardPanelState(
     val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
     val keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA,
     val shiftState: ShiftState = ShiftState.OFF,
+    val topStripMode: TopStripMode = TopStripMode.SUGGESTIONS,
     val ephemeralHint: String = "",
     val alternateOptions: List<String> = emptyList(),
     val alternateAnchorRatio: Float = 0.5f,
@@ -110,10 +116,7 @@ class SeekerKeyboardView(
         if (panelState.ephemeralHint.isNotBlank()) {
             addView(buildHintStrip(panelState.ephemeralHint, settings))
         }
-        if (settings.suggestionsEnabled) {
-            addView(buildSuggestionStrip(panelState, settings, onUtilityPress))
-        }
-        addView(buildUtilityStrip(settings, panelState.activePanel, onUtilityPress))
+        addView(buildTopStrip(panelState, settings, onUtilityPress))
         if (panelState.activePanel != UtilityPanel.NONE) {
             addView(buildPanel(settings, panelState, onUtilityPress))
         }
@@ -288,7 +291,7 @@ class SeekerKeyboardView(
         }
     }
 
-    private fun buildSuggestionStrip(
+    private fun buildTopStrip(
         panelState: KeyboardPanelState,
         settings: KeyboardSettings,
         onUtilityPress: (String) -> Unit,
@@ -299,30 +302,53 @@ class SeekerKeyboardView(
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(6)
             }
-            val visibleSuggestions = panelState.suggestions.take(3)
-            visibleSuggestions.forEach { suggestion ->
-                addView(
-                    Button(context).apply {
-                        text = suggestion
-                        isAllCaps = false
-                        typeface = resolvedTypeface(settings)
-                        setTextColor(foregroundColor(settings))
-                        background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
-                        layoutParams = LayoutParams(0, dp(36), 1f).apply {
-                            marginStart = dp(3)
-                            marginEnd = dp(3)
+            when (panelState.topStripMode) {
+                TopStripMode.SUGGESTIONS -> {
+                    val visibleSuggestions = panelState.suggestions.take(3)
+                    if (visibleSuggestions.isEmpty()) {
+                        addView(
+                            TextView(context).apply {
+                                text = "Suggestions ready"
+                                gravity = Gravity.CENTER_VERTICAL
+                                typeface = resolvedTypeface(settings)
+                                setTextColor(foregroundColor(settings))
+                                background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
+                                setPadding(dp(12), dp(0), dp(12), dp(0))
+                                layoutParams = LayoutParams(0, dp(36), 1f).apply {
+                                    marginStart = dp(3)
+                                    marginEnd = dp(3)
+                                }
+                            }
+                        )
+                    } else {
+                        visibleSuggestions.forEach { suggestion ->
+                            addView(
+                                Button(context).apply {
+                                    text = suggestion
+                                    isAllCaps = false
+                                    typeface = resolvedTypeface(settings)
+                                    setTextColor(foregroundColor(settings))
+                                    background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
+                                    layoutParams = LayoutParams(0, dp(36), 1f).apply {
+                                        marginStart = dp(3)
+                                        marginEnd = dp(3)
+                                    }
+                                    setOnClickListener { onUtilityPress("action:pick_suggestion:$suggestion") }
+                                }
+                            )
                         }
-                        setOnClickListener { onUtilityPress("action:pick_suggestion:$suggestion") }
                     }
-                )
+                }
+                TopStripMode.TOOLS -> {
+                    addView(buildStripToolButton("wallet", panelState.activePanel == UtilityPanel.WALLET, settings, onUtilityPress))
+                    addView(buildStripToolButton("clipboard", panelState.activePanel == UtilityPanel.CLIPBOARD, settings, onUtilityPress))
+                    addView(buildStripToolButton("theme", panelState.activePanel == UtilityPanel.THEME, settings, onUtilityPress))
+                    addView(buildStripToolButton("settings", panelState.activePanel == UtilityPanel.SETTINGS, settings, onUtilityPress))
+                }
             }
             addView(
                 Button(context).apply {
-                    text = when (panelState.keyboardLayer) {
-                        KeyboardLayer.ALPHA -> "⌄"
-                        KeyboardLayer.SYMBOLS, KeyboardLayer.MORE_SYMBOLS -> "ABC"
-                        KeyboardLayer.EMOJI -> "ABC"
-                    }
+                    text = if (panelState.topStripMode == TopStripMode.SUGGESTIONS) "⌄" else "abc"
                     isAllCaps = false
                     typeface = resolvedTypeface(settings)
                     setTextColor(Color.BLACK)
@@ -330,7 +356,7 @@ class SeekerKeyboardView(
                     layoutParams = LayoutParams(dp(44), dp(36)).apply {
                         marginStart = dp(3)
                     }
-                    setOnClickListener { onUtilityPress("action:toggle_symbols") }
+                    setOnClickListener { onUtilityPress("action:toggle_top_strip") }
                 }
             )
         }
@@ -396,25 +422,7 @@ class SeekerKeyboardView(
         }
     }
 
-    private fun buildUtilityStrip(
-        settings: KeyboardSettings,
-        activePanel: UtilityPanel,
-        onUtilityPress: (String) -> Unit,
-    ): View {
-        return LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = dp(6)
-            }
-            addView(buildUtilityButton("wallet", activePanel == UtilityPanel.WALLET, settings, onUtilityPress))
-            addView(buildUtilityButton("clipboard", activePanel == UtilityPanel.CLIPBOARD, settings, onUtilityPress))
-            addView(buildUtilityButton("theme", activePanel == UtilityPanel.THEME, settings, onUtilityPress))
-            addView(buildUtilityButton("settings", activePanel == UtilityPanel.SETTINGS, settings, onUtilityPress))
-        }
-    }
-
-    private fun buildUtilityButton(
+    private fun buildStripToolButton(
         label: String,
         active: Boolean,
         settings: KeyboardSettings,
@@ -424,9 +432,13 @@ class SeekerKeyboardView(
             text = label
             isAllCaps = false
             typeface = resolvedTypeface(settings)
-            setTextColor(foregroundColor(settings))
-            background = metalDrawable(settings, active)
-            layoutParams = LayoutParams(0, utilityHeight(settings), 1f).apply {
+            setTextColor(if (active) Color.BLACK else foregroundColor(settings))
+            background = if (active) {
+                pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
+            } else {
+                pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
+            }
+            layoutParams = LayoutParams(0, dp(36), 1f).apply {
                 marginStart = dp(3)
                 marginEnd = dp(3)
             }
