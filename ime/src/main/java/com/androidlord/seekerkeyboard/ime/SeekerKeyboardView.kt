@@ -110,8 +110,8 @@ class SeekerKeyboardView(
         if (panelState.ephemeralHint.isNotBlank()) {
             addView(buildHintStrip(panelState.ephemeralHint, settings))
         }
-        if (settings.suggestionsEnabled && panelState.suggestions.isNotEmpty()) {
-            addView(buildSuggestionStrip(panelState.suggestions, settings, onUtilityPress))
+        if (settings.suggestionsEnabled) {
+            addView(buildSuggestionStrip(panelState, settings, onUtilityPress))
         }
         addView(buildUtilityStrip(settings, panelState.activePanel, onUtilityPress))
         if (panelState.activePanel != UtilityPanel.NONE) {
@@ -178,18 +178,18 @@ class SeekerKeyboardView(
         return when (language) {
             KeyboardLanguage.ENGLISH -> listOf(
                 listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-                listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
-                listOf("shift", "*", "'", ":", ";", "!", "%", "?", "⌫"),
+                listOf("@", "#", "$", "_", "&", "-", "+", "(", ")", "/"),
+                listOf("shift", "%", "\"", "'", ":", ";", "!", "?", "⌫"),
             )
             KeyboardLanguage.SPANISH -> listOf(
                 listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-                listOf("@", "#", "€", "&", "-", "+", "(", ")", "/", "\""),
-                listOf("shift", "*", "'", ":", ";", "¡", "%", "¿", "⌫"),
+                listOf("@", "#", "€", "_", "&", "-", "+", "(", ")", "/"),
+                listOf("shift", "%", "\"", "'", ":", ";", "¡", "¿", "⌫"),
             )
             KeyboardLanguage.PORTUGUESE -> listOf(
                 listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-                listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
-                listOf("shift", "*", "'", ":", ";", "!", "º", "?", "⌫"),
+                listOf("@", "#", "$", "_", "&", "-", "+", "(", ")", "/"),
+                listOf("shift", "%", "\"", "'", ":", ";", "!", "º", "⌫"),
             )
         }
     }
@@ -289,7 +289,7 @@ class SeekerKeyboardView(
     }
 
     private fun buildSuggestionStrip(
-        suggestions: List<String>,
+        panelState: KeyboardPanelState,
         settings: KeyboardSettings,
         onUtilityPress: (String) -> Unit,
     ): View {
@@ -299,7 +299,8 @@ class SeekerKeyboardView(
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(6)
             }
-            suggestions.forEach { suggestion ->
+            val visibleSuggestions = panelState.suggestions.take(3)
+            visibleSuggestions.forEach { suggestion ->
                 addView(
                     Button(context).apply {
                         text = suggestion
@@ -315,6 +316,23 @@ class SeekerKeyboardView(
                     }
                 )
             }
+            addView(
+                Button(context).apply {
+                    text = when (panelState.keyboardLayer) {
+                        KeyboardLayer.ALPHA -> "⌄"
+                        KeyboardLayer.SYMBOLS, KeyboardLayer.MORE_SYMBOLS -> "ABC"
+                        KeyboardLayer.EMOJI -> "ABC"
+                    }
+                    isAllCaps = false
+                    typeface = resolvedTypeface(settings)
+                    setTextColor(Color.BLACK)
+                    background = pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
+                    layoutParams = LayoutParams(dp(44), dp(36)).apply {
+                        marginStart = dp(3)
+                    }
+                    setOnClickListener { onUtilityPress("action:toggle_symbols") }
+                }
+            )
         }
     }
 
