@@ -386,13 +386,7 @@ class SeekerKeyboardView(
             isAllCaps = false
             typeface = resolvedTypeface(settings)
             setTextColor(foregroundColor(settings))
-            background = pillDrawable(
-                parseColorOrFallback(
-                    if (active) settings.accentHex else settings.utilityHex,
-                    if (active) accentColor(settings.theme) else mutedUtilityColor(settings.theme)
-                ),
-                dpFloat(14),
-            )
+            background = metalDrawable(settings, active)
             layoutParams = LayoutParams(0, utilityHeight(settings), 1f).apply {
                 marginStart = dp(3)
                 marginEnd = dp(3)
@@ -884,8 +878,7 @@ class SeekerKeyboardView(
 
     private fun applyBackground(settings: KeyboardSettings) {
         val fallback = parseColorOrFallback(settings.backgroundHex, backgroundColor(settings.theme))
-        setBackgroundColor(fallback)
-        background = null
+        background = gradientDrawableForTheme(settings)
         if (settings.wallpaperUri.isBlank()) return
         if (cachedWallpaperUri != settings.wallpaperUri) {
             cachedWallpaperUri = settings.wallpaperUri
@@ -902,9 +895,9 @@ class SeekerKeyboardView(
     }
 
     private fun backgroundColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#F1E3D3"
-        KeyboardTheme.TEAL -> "#D8F4EE"
-        KeyboardTheme.GRAPHITE -> "#20272B"
+        KeyboardTheme.SAND -> "#161A28"
+        KeyboardTheme.TEAL -> "#0A1020"
+        KeyboardTheme.GRAPHITE -> "#151922"
     }
 
     private fun keyDrawable(settings: KeyboardSettings, label: String): GradientDrawable {
@@ -913,7 +906,7 @@ class SeekerKeyboardView(
             KeyboardLayoutMode.COMFORT -> cornerRadius(settings, label == "space")
             KeyboardLayoutMode.THUMB -> cornerRadius(settings, label == "space")
         }
-        return pillDrawable(keyColor(settings, label), dpFloat(radius))
+        return metalKeyDrawable(settings, label, radius)
     }
 
     private fun cornerRadius(settings: KeyboardSettings, isSpace: Boolean): Int {
@@ -948,37 +941,37 @@ class SeekerKeyboardView(
     }
 
     private fun foregroundColor(settings: KeyboardSettings): Int {
-        return parseColorOrFallback(settings.textHex, if (settings.theme == KeyboardTheme.GRAPHITE) "#FFFFFF" else "#111111")
+        return parseColorOrFallback(settings.textHex, "#14F195")
     }
 
     private fun accentColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#C16A39"
-        KeyboardTheme.TEAL -> "#12786B"
-        KeyboardTheme.GRAPHITE -> "#5C6F52"
+        KeyboardTheme.SAND -> "#7C4DFF"
+        KeyboardTheme.TEAL -> "#14F195"
+        KeyboardTheme.GRAPHITE -> "#9945FF"
     }
 
     private fun neutralKeyColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#FFF8F2"
-        KeyboardTheme.TEAL -> "#F3FFFC"
-        KeyboardTheme.GRAPHITE -> "#344047"
+        KeyboardTheme.SAND -> "#7D8796"
+        KeyboardTheme.TEAL -> "#848E9D"
+        KeyboardTheme.GRAPHITE -> "#727D8D"
     }
 
     private fun auxiliaryKeyColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#E5B289"
-        KeyboardTheme.TEAL -> "#8ED1C4"
-        KeyboardTheme.GRAPHITE -> "#58656C"
+        KeyboardTheme.SAND -> "#5D6774"
+        KeyboardTheme.TEAL -> "#5E6874"
+        KeyboardTheme.GRAPHITE -> "#5A6471"
     }
 
     private fun mutedUtilityColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#E8C8B0"
-        KeyboardTheme.TEAL -> "#BDE8DF"
-        KeyboardTheme.GRAPHITE -> "#415158"
+        KeyboardTheme.SAND -> "#313A49"
+        KeyboardTheme.TEAL -> "#243346"
+        KeyboardTheme.GRAPHITE -> "#2B3340"
     }
 
     private fun panelColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#8A4A26"
-        KeyboardTheme.TEAL -> "#0F5C53"
-        KeyboardTheme.GRAPHITE -> "#263137"
+        KeyboardTheme.SAND -> "#0F1526"
+        KeyboardTheme.TEAL -> "#0D1730"
+        KeyboardTheme.GRAPHITE -> "#111827"
     }
 
     private fun parseColorOrFallback(configured: String, fallback: String): Int {
@@ -1000,6 +993,55 @@ class SeekerKeyboardView(
     private fun applyPressEffect(button: Button, settings: KeyboardSettings, pressed: Boolean) {
         if (!settings.showPressEffect) return
         button.animate().scaleX(if (pressed) 0.96f else 1f).scaleY(if (pressed) 0.96f else 1f).alpha(if (pressed) 0.9f else 1f).setDuration(45).start()
+    }
+
+    private fun gradientDrawableForTheme(settings: KeyboardSettings): GradientDrawable {
+        val colors = when (settings.theme) {
+            KeyboardTheme.SAND -> intArrayOf(Color.parseColor("#070B17"), Color.parseColor("#1A1040"), Color.parseColor("#0D3B3B"))
+            KeyboardTheme.TEAL -> intArrayOf(Color.parseColor("#050816"), Color.parseColor("#15104A"), Color.parseColor("#063C37"))
+            KeyboardTheme.GRAPHITE -> intArrayOf(Color.parseColor("#090C12"), Color.parseColor("#25154A"), Color.parseColor("#06352F"))
+        }
+        return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
+            gradientType = GradientDrawable.LINEAR_GRADIENT
+        }
+    }
+
+    private fun metalDrawable(settings: KeyboardSettings, active: Boolean): GradientDrawable {
+        val top = if (active) Color.parseColor("#A0ABB9") else Color.parseColor("#8D97A6")
+        val middle = if (active) Color.parseColor("#57616F") else Color.parseColor("#4D5662")
+        val bottom = if (active) Color.parseColor("#262D39") else Color.parseColor("#232A34")
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(top, middle, bottom)
+        ).apply {
+            cornerRadius = dpFloat(cornerRadius(settings, false))
+            setStroke(dp(1), Color.parseColor("#B8C4D6"))
+        }
+    }
+
+    private fun metalKeyDrawable(settings: KeyboardSettings, label: String, radius: Int): GradientDrawable {
+        val baseTop = when (label) {
+            "wallet" -> Color.parseColor("#4A3A75")
+            "enter", "shift", "123", "⌫" -> Color.parseColor("#778293")
+            else -> Color.parseColor("#A6AFBC")
+        }
+        val baseMid = when (label) {
+            "wallet" -> Color.parseColor("#2E2552")
+            "enter", "shift", "123", "⌫" -> Color.parseColor("#576170")
+            else -> Color.parseColor("#687384")
+        }
+        val baseBottom = when (label) {
+            "wallet" -> Color.parseColor("#141A29")
+            "enter", "shift", "123", "⌫" -> Color.parseColor("#2B3340")
+            else -> Color.parseColor("#384250")
+        }
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(baseTop, baseMid, baseBottom)
+        ).apply {
+            cornerRadius = dpFloat(radius)
+            setStroke(dp(1), Color.parseColor("#C5CEDB"))
+        }
     }
 
     private fun resolvedTypeface(settings: KeyboardSettings): Typeface? {

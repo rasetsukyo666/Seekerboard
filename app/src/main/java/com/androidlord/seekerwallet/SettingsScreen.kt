@@ -43,6 +43,8 @@ import com.androidlord.seekerkeyboard.ime.KeyboardLayoutMode
 import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
 import com.androidlord.seekerkeyboard.ime.KeyboardTheme
 import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
+import com.androidlord.seekerwallet.data.WalletSessionStore
+import com.androidlord.seekerwallet.wallet.SolanaCluster
 import com.androidlord.seekerwallet.theme.LocalSeekerPalette
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -55,8 +57,10 @@ fun SettingsScreen(
     val version = remember { mutableIntStateOf(0) }
     version.intValue
     val settingsStore = KeyboardSettingsStore(context)
+    val sessionStore = WalletSessionStore(context)
     val draftStore = WalletActionDraftStore(context)
     val settings = settingsStore.load()
+    val cluster = sessionStore.loadCluster()
     val drafts = draftStore.load()
     val palette = LocalSeekerPalette.current
 
@@ -128,6 +132,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsCard("Theme Preset") {
+                    Text("Base theme uses a Solana-style dark gradient with metallic keys and green legends.", style = MaterialTheme.typography.bodyMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         KeyboardTheme.entries.forEach { option ->
                             AssistChip(
@@ -137,6 +142,22 @@ fun SettingsScreen(
                                 },
                                 label = { Text(option.label) },
                                 enabled = option != settings.theme,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsCard("Cluster") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SolanaCluster.entries.forEach { option ->
+                            AssistChip(
+                                onClick = {
+                                    sessionStore.saveCluster(option)
+                                    refresh()
+                                },
+                                label = { Text(option.label) },
+                                enabled = option != cluster,
                             )
                         }
                     }

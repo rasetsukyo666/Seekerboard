@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
             val requestedWalletAction by remember {
                 androidx.compose.runtime.mutableStateOf(intent?.getStringExtra("wallet_action"))
             }
-            SeekerTheme(themePreset = ThemePreset.SAND) {
+            SeekerTheme(themePreset = ThemePreset.TEAL) {
                 SettingsScreen(requestedWalletAction = requestedWalletAction)
             }
         }

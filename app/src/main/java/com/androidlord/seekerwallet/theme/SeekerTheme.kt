@@ -72,19 +72,19 @@ private fun colorScheme(preset: ThemePreset, dark: Boolean): ColorScheme {
         }
         ThemePreset.TEAL -> if (dark) {
             darkColorScheme(
-                primary = Color(0xFF6FE4CA),
-                onPrimary = Color(0xFF07221E),
-                secondary = Color(0xFF7DD3FC),
-                background = Color(0xFF081311),
-                surface = Color(0xFF10201D),
+                primary = Color(0xFF14F195),
+                onPrimary = Color(0xFF051713),
+                secondary = Color(0xFF9945FF),
+                background = Color(0xFF060B18),
+                surface = Color(0xFF111A2B),
             )
         } else {
             lightColorScheme(
-                primary = Color(0xFF0E7666),
-                onPrimary = Color(0xFFF2FFFC),
-                secondary = Color(0xFF145B78),
-                background = Color(0xFFE4FBF5),
-                surface = Color(0xFFF5FFFD),
+                primary = Color(0xFF14F195),
+                onPrimary = Color(0xFF04150F),
+                secondary = Color(0xFF7D4CFF),
+                background = Color(0xFF0A1120),
+                surface = Color(0xFF141E31),
             )
         }
         ThemePreset.GRAPHITE -> if (dark) {
@@ -117,11 +117,11 @@ private fun palette(preset: ThemePreset): SeekerPalette {
             heroText = Color(0xFFF9F4EF),
         )
         ThemePreset.TEAL -> SeekerPalette(
-            backdropTop = Color(0xFFD9FFF4),
-            backdropBottom = Color(0xFFE5F6F8),
-            heroCard = Color(0xFF102826),
-            heroBadge = Color(0xFF47C8B0),
-            heroText = Color(0xFFF2FFFB),
+            backdropTop = Color(0xFF070B17),
+            backdropBottom = Color(0xFF103B3B),
+            heroCard = Color(0xFF151B2E),
+            heroBadge = Color(0xFF14F195),
+            heroText = Color(0xFFE7FFF7),
         )
         ThemePreset.GRAPHITE -> SeekerPalette(
             backdropTop = Color(0xFFE4E1D4),
