@@ -18,8 +18,15 @@ enum class UtilityPanel {
     SETTINGS,
 }
 
+enum class WalletDrawerTab {
+    OVERVIEW,
+    STAKE,
+    ACCOUNTS,
+}
+
 data class KeyboardPanelState(
     val activePanel: UtilityPanel = UtilityPanel.NONE,
+    val walletTab: WalletDrawerTab = WalletDrawerTab.OVERVIEW,
     val walletSnapshot: WalletSessionSnapshot = WalletSessionSnapshot(),
     val clipboardPreview: String = "Clipboard empty",
     val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
@@ -128,15 +135,38 @@ class SeekerKeyboardView(
         when (panelState.activePanel) {
             UtilityPanel.WALLET -> {
                 card.addView(panelTitle("Wallet"))
+                card.addView(panelActions(settings, listOf("wallet_overview", "wallet_stake", "wallet_accounts"), onUtilityPress))
+                card.addView(panelText(panelState.walletSnapshot.statusMessage))
                 card.addView(panelText("Session: ${panelState.walletSnapshot.walletAddress?.let(::shortAddress) ?: "disconnected"}"))
                 card.addView(panelText("Cluster: ${panelState.walletSnapshot.clusterName.lowercase()}"))
                 card.addView(panelText(if (panelState.walletSnapshot.authTokenPresent) "Auth token cached" else "No cached session token"))
-                card.addView(panelText("Native stake accounts: ${panelState.walletSnapshot.nativeStakeAccountCount}"))
-                card.addView(panelText("Consolidation preview: ${panelState.consolidationFeeQuote.sourceCount} sources"))
-                card.addView(panelText("Fee carry: ${panelState.consolidationFeeQuote.perSourceFeeInSkr} SKR/source, cap ${panelState.consolidationFeeQuote.capInSkr} SKR"))
-                card.addView(panelText("Current consolidation fee: ${panelState.consolidationFeeQuote.feeInSkr} SKR"))
-                card.addView(panelActions(settings, listOf("connect", "stake", "accounts", "send"), onUtilityPress))
-                card.addView(panelActions(settings, listOf("sources_down", "sources_up", "consolidate"), onUtilityPress))
+                when (panelState.walletTab) {
+                    WalletDrawerTab.OVERVIEW -> {
+                        card.addView(panelText("Balance: ${panelState.walletSnapshot.totalBalanceUsd}"))
+                        card.addView(panelText("SKR: ${panelState.walletSnapshot.skrApyLabel} · staked ${panelState.walletSnapshot.skrStakedAmount} · withdrawable ${panelState.walletSnapshot.skrWithdrawableAmount}"))
+                        card.addView(panelText("Native stake accounts: ${panelState.walletSnapshot.nativeStakeAccountCount}"))
+                        card.addView(panelActions(settings, listOf("connect", "refresh", "disconnect"), onUtilityPress))
+                    }
+                    WalletDrawerTab.STAKE -> {
+                        card.addView(panelText("Validator lane: Solana Mobile validator"))
+                        card.addView(panelText("SKR APY: ${panelState.walletSnapshot.skrApyLabel}"))
+                        card.addView(panelText("SKR staked: ${panelState.walletSnapshot.skrStakedAmount}"))
+                        card.addView(panelText("SKR withdrawable: ${panelState.walletSnapshot.skrWithdrawableAmount}"))
+                        card.addView(panelText("Stake accounts available: ${panelState.walletSnapshot.nativeStakeAccountCount}"))
+                        card.addView(panelText("Native delegate/deactivate/withdraw routing is still being completed from the IME bridge."))
+                        card.addView(panelActions(settings, listOf("refresh", "connect"), onUtilityPress))
+                    }
+                    WalletDrawerTab.ACCOUNTS -> {
+                        card.addView(panelText("Eligible consolidation sources: ${panelState.walletSnapshot.eligibleConsolidationSources}"))
+                        card.addView(panelText("Consolidation preview: ${panelState.consolidationFeeQuote.sourceCount} sources"))
+                        card.addView(panelText("Fee carry: ${panelState.consolidationFeeQuote.perSourceFeeInSkr} SKR/source, cap ${panelState.consolidationFeeQuote.capInSkr} SKR"))
+                        card.addView(panelText("Current consolidation fee: ${panelState.consolidationFeeQuote.feeInSkr} SKR"))
+                        panelState.walletSnapshot.stakeAccountsPreview.take(4).forEach { stake ->
+                            card.addView(panelText("• ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)} · ${stake.stakeState}"))
+                        }
+                        card.addView(panelActions(settings, listOf("sources_down", "sources_up", "refresh"), onUtilityPress))
+                    }
+                }
             }
             UtilityPanel.CLIPBOARD -> {
                 card.addView(panelTitle("Clipboard"))
@@ -333,6 +363,10 @@ class SeekerKeyboardView(
 
     private fun shortAddress(value: String): String {
         return if (value.length <= 12) value else "${value.take(6)}...${value.takeLast(6)}"
+    }
+
+    private fun formatLamports(lamports: Long): String {
+        return String.format(java.util.Locale.US, "%.3f SOL", lamports / 1_000_000_000.0)
     }
 
     private fun dp(value: Int): Int {

@@ -293,6 +293,13 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                     )
                 }
                 sessionStore.saveNativeStakeAccountCount(bundle.stakeAccounts.size)
+                val skrPosition = buildSkrPosition(bundle.skrState, bundle.skrApy)
+                sessionStore.saveWalletPanelSnapshot(
+                    totalBalanceUsd = "$" + TWO_DECIMAL.format(solUsd),
+                    skrPosition = skrPosition,
+                    stakeAccounts = bundle.stakeAccounts,
+                    eligibleConsolidationSources = estimateEligibleConsolidationSources(bundle.stakeAccounts),
+                )
             }.onFailure { error ->
                 failAction("Refresh failed: ${error.message}")
                 _state.update { it.copy(isRefreshing = false) }
@@ -624,6 +631,12 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
     private object ColorPalette {
         val ACCENT = androidx.compose.ui.graphics.Color(0xFF00C2A8)
         val USDC = androidx.compose.ui.graphics.Color(0xFF1D7FF2)
+    }
+
+    private fun estimateEligibleConsolidationSources(accounts: List<NativeStakeAccount>): Int {
+        val delegated = accounts.filter { it.delegationVote != null && !isStakeInactive(it) }
+        val largestValidatorGroup = delegated.groupBy { it.delegationVote }.maxOfOrNull { it.value.size } ?: 0
+        return (largestValidatorGroup - 1).coerceAtLeast(0)
     }
 
     private companion object {

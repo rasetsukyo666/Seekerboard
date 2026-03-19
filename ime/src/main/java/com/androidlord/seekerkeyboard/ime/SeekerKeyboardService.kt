@@ -19,6 +19,7 @@ class SeekerKeyboardService : InputMethodService() {
     private lateinit var clipboardManager: ClipboardManager
     private lateinit var keyboardView: SeekerKeyboardView
     private var activePanel: UtilityPanel = UtilityPanel.NONE
+    private var walletDrawerTab: WalletDrawerTab = WalletDrawerTab.OVERVIEW
 
     override fun onCreate() {
         super.onCreate()
@@ -50,6 +51,7 @@ class SeekerKeyboardService : InputMethodService() {
             settings = settings,
             panelState = KeyboardPanelState(
                 activePanel = activePanel,
+                walletTab = walletDrawerTab,
                 walletSnapshot = walletStore.load(),
                 clipboardPreview = clipPreview,
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
@@ -89,8 +91,12 @@ class SeekerKeyboardService : InputMethodService() {
                 }
                 togglePanel(panel)
             }
-            action == "action:connect" || action == "action:stake" || action == "action:accounts" || action == "action:send" -> launchSettingsApp()
-            action == "action:consolidate" -> launchSettingsApp("wallet_action", "consolidate")
+            action == "action:wallet_overview" -> walletDrawerTab = WalletDrawerTab.OVERVIEW
+            action == "action:wallet_stake" -> walletDrawerTab = WalletDrawerTab.STAKE
+            action == "action:wallet_accounts" -> walletDrawerTab = WalletDrawerTab.ACCOUNTS
+            action == "action:connect" -> launchWalletBridge("connect")
+            action == "action:refresh" -> launchWalletBridge("refresh")
+            action == "action:disconnect" -> launchWalletBridge("disconnect")
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
@@ -107,6 +113,9 @@ class SeekerKeyboardService : InputMethodService() {
     }
 
     private fun togglePanel(panel: UtilityPanel) {
+        if (panel == UtilityPanel.WALLET && activePanel != panel) {
+            walletDrawerTab = WalletDrawerTab.OVERVIEW
+        }
         activePanel = if (activePanel == panel) UtilityPanel.NONE else panel
     }
 
@@ -134,6 +143,17 @@ class SeekerKeyboardService : InputMethodService() {
                 if (extraKey != null && extraValue != null) {
                     putExtra(extraKey, extraValue)
                 }
+            }
+        )
+    }
+
+    private fun launchWalletBridge(walletAction: String) {
+        requestHideSelf(0)
+        startActivity(
+            Intent().apply {
+                setClassName(packageName, "com.androidlord.seekerwallet.WalletBridgeActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("wallet_action", walletAction)
             }
         )
     }
