@@ -52,6 +52,7 @@ data class KeyboardPanelState(
     val clipboardPreview: String = "Clipboard empty",
     val clipboardRaw: String = "",
     val clipboardHistory: List<String> = emptyList(),
+    val clipboardPinned: List<String> = emptyList(),
     val drafts: WalletActionDrafts = WalletActionDrafts(),
     val selectedStakeIndex: Int = 0,
     val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
@@ -401,6 +402,10 @@ class SeekerKeyboardView(
             WalletDrawerTab.OVERVIEW -> {
                 card.addView(panelMeta("balance", panelState.walletSnapshot.totalBalanceUsd, settings))
                 card.addView(panelMeta("skr", "${panelState.walletSnapshot.skrStakedAmount} staked · ${panelState.walletSnapshot.skrWithdrawableAmount} ready", settings))
+                panelState.walletSnapshot.unifiedAccounts.take(3).forEach { account ->
+                    card.addView(panelMeta(account.title.lowercase(), "${account.balanceLabel} · ${account.detailLabel}", settings))
+                }
+                card.addView(panelMeta("review", if (panelState.walletSnapshot.reviewRequired) "approval handoff active" else "direct", settings))
                 card.addView(panelMeta("send", "${panelState.drafts.sendAmountSol} SOL -> ${panelState.clipboardRaw.ifBlank { "clipboard target" }.let { if (it.length > 18) shortAddress(it) else it }}", settings))
                 card.addView(panelActions(settings, listOf("connect", "refresh", "disconnect"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("send_down", "send_up", "send"), onUtilityPress))
@@ -420,6 +425,9 @@ class SeekerKeyboardView(
                 card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${it.stakeState}" } ?: "none", settings))
                 card.addView(panelMeta("merge", "${panelState.consolidationFeeQuote.sourceCount} src · ${panelState.consolidationFeeQuote.feeInSkr} SKR carry", settings))
                 card.addView(panelMeta("compat", consolidationHint(panelState), settings))
+                panelState.walletSnapshot.unifiedAccounts.forEach { account ->
+                    card.addView(panelText("${account.title}: ${account.balanceLabel} · ${account.detailLabel}", settings))
+                }
                 panelState.walletSnapshot.stakeAccountsPreview.take(4).forEachIndexed { index, stake ->
                     val prefix = if (index == panelState.selectedStakeIndex) ">" else "•"
                     card.addView(panelText("$prefix ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)}", settings))
@@ -433,6 +441,12 @@ class SeekerKeyboardView(
     private fun renderClipboardPanel(card: LinearLayout, settings: KeyboardSettings, panelState: KeyboardPanelState, onUtilityPress: (String) -> Unit) {
         card.addView(panelTitle("Clipboard", settings))
         card.addView(statusChip(compactStatus(panelState.clipboardPreview), settings))
+        if (panelState.clipboardPinned.isNotEmpty()) {
+            card.addView(panelText("Pinned", settings))
+            panelState.clipboardPinned.take(3).forEachIndexed { index, item ->
+                card.addView(panelText("★ ${index + 1}. ${item.take(36)}", settings))
+            }
+        }
         if (panelState.clipboardHistory.isEmpty()) {
             card.addView(panelText("No history yet", settings))
         } else {
@@ -440,8 +454,9 @@ class SeekerKeyboardView(
                 card.addView(panelText("${index + 1}. ${item.take(36)}", settings))
             }
         }
-        card.addView(panelActions(settings, listOf("paste", "hist_1", "hist_2"), onUtilityPress))
-        card.addView(panelActions(settings, listOf("hist_3", "hist_4", "clear"), onUtilityPress))
+        card.addView(panelActions(settings, listOf("paste", "pin_clip", "hist_1"), onUtilityPress))
+        card.addView(panelActions(settings, listOf("hist_2", "hist_3", "hist_4"), onUtilityPress))
+        card.addView(panelActions(settings, listOf("pin_1", "pin_2", "clear"), onUtilityPress))
     }
 
     private fun panelTitle(text: String, settings: KeyboardSettings): View = TextView(context).apply {

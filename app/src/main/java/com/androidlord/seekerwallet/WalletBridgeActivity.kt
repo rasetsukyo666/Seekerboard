@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.androidlord.seekerkeyboard.ime.ConsolidationFeeModel
+import com.androidlord.seekerkeyboard.ime.UnifiedAccountPreview
 import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
 import com.androidlord.seekerwallet.data.WalletSessionStore
 import com.androidlord.seekerwallet.wallet.NativeStakeAccount
@@ -87,6 +88,7 @@ class WalletBridgeActivity : ComponentActivity() {
                 sessionStore.saveAuthToken(result.authResult.authToken)
                 walletAdapter.authToken = result.authResult.authToken
                 refreshSnapshot(address, sessionStore.loadCluster())
+                sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "connect")
                 sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}.")
             }
             is TransactionResult.NoWalletFound -> sessionStore.saveKeyboardStatus("No MWA wallet found on this device.")
@@ -100,6 +102,7 @@ class WalletBridgeActivity : ComponentActivity() {
             is TransactionResult.Success, is TransactionResult.NoWalletFound -> {
                 sessionStore.clearSession()
                 walletAdapter.authToken = null
+                sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "disconnect")
                 sessionStore.saveKeyboardStatus("Keyboard wallet session cleared.")
             }
             is TransactionResult.Failure -> sessionStore.saveKeyboardStatus("Disconnect failed: ${result.e.message}")
@@ -255,12 +258,14 @@ class WalletBridgeActivity : ComponentActivity() {
 
         val totalBalanceUsd = "$" + TWO_DECIMAL.format(bundle.portfolio.solBalance * SOL_PRICE_HINT)
         val skrPosition = buildSkrPosition(bundle.skrState, bundle.skrApy)
+        val unifiedAccounts = buildUnifiedAccounts(bundle.portfolio, bundle.stakeAccounts, skrPosition)
         sessionStore.saveNativeStakeAccountCount(bundle.stakeAccounts.size)
         sessionStore.saveWalletPanelSnapshot(
             totalBalanceUsd = totalBalanceUsd,
             skrPosition = skrPosition,
             stakeAccounts = bundle.stakeAccounts,
             eligibleConsolidationSources = estimateEligibleConsolidationSources(bundle.stakeAccounts),
+            unifiedAccounts = unifiedAccounts,
         )
     }
 
@@ -295,6 +300,7 @@ class WalletBridgeActivity : ComponentActivity() {
             is TransactionResult.Success -> {
                 val signature = result.successPayload?.signatures?.firstOrNull()?.let(Base58::encodeToString)
                 sessionStore.loadWalletAddress()?.let { refreshSnapshot(it, sessionStore.loadCluster()) }
+                sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = successMessage)
                 sessionStore.saveKeyboardStatus(
                     buildString {
                         append(successMessage)
@@ -318,6 +324,42 @@ class WalletBridgeActivity : ComponentActivity() {
             unstakingAmount = skrState?.unstakingAmount ?: "0",
             withdrawableAmount = skrState?.withdrawableAmountForDisplay ?: "0",
             availableBalance = skrState?.availableBalance ?: "0",
+        )
+    }
+
+    private fun buildUnifiedAccounts(
+        portfolio: PortfolioSnapshot,
+        stakeAccounts: List<NativeStakeAccount>,
+        skrPosition: SkrPosition,
+    ): List<UnifiedAccountPreview> {
+        val nativeStakeLamports = stakeAccounts.sumOf { it.lamports }
+        val activeStakeCount = stakeAccounts.count { !isStakeInactive(it) }
+        val tokenCount = portfolio.tokenHoldings.size
+        return listOf(
+            UnifiedAccountPreview(
+                title = "Spendable SOL",
+                balanceLabel = "${SIX_DECIMAL.format(portfolio.solBalance)} SOL",
+                detailLabel = "$" + TWO_DECIMAL.format(portfolio.solBalance * SOL_PRICE_HINT),
+                emphasis = if (portfolio.solBalance > 0.0) "liquid" else "empty",
+            ),
+            UnifiedAccountPreview(
+                title = "Native Stake",
+                balanceLabel = solLabel(nativeStakeLamports),
+                detailLabel = "$activeStakeCount account(s) · Solana Mobile validator",
+                emphasis = if (activeStakeCount > 0) "earning" else "idle",
+            ),
+            UnifiedAccountPreview(
+                title = "SKR Position",
+                balanceLabel = "${skrPosition.stakedAmount} staked",
+                detailLabel = "${skrPosition.withdrawableAmount} ready · ${skrPosition.apyLabel}",
+                emphasis = if (skrPosition.stakedAmount != "0") "staked" else "ready",
+            ),
+            UnifiedAccountPreview(
+                title = "Token Accounts",
+                balanceLabel = "$tokenCount tracked",
+                detailLabel = portfolio.tokenHoldings.take(2).joinToString(" · ") { "${it.amount} ${it.symbol}" }.ifBlank { "No funded token accounts" },
+                emphasis = if (tokenCount > 0) "loaded" else "quiet",
+            ),
         )
     }
 
@@ -383,6 +425,10 @@ class WalletBridgeActivity : ComponentActivity() {
         return if (address.length <= 10) address else address.take(4) + "…" + address.takeLast(4)
     }
 
+    private fun solLabel(lamports: Long): String {
+        return "${SIX_DECIMAL.format(lamports / 1_000_000_000.0)} SOL"
+    }
+
     private companion object {
         const val IDENTITY_URI = "https://github.com/androidlord666/seekerkeyboard"
         const val ICON_URI = "/favicon.ico"
@@ -390,6 +436,7 @@ class WalletBridgeActivity : ComponentActivity() {
         const val SOL_PRICE_HINT = 90.0
         const val SKR_DECIMALS = 6
         val TWO_DECIMAL = DecimalFormat("0.00", DecimalFormatSymbols(Locale.US))
+        val SIX_DECIMAL = DecimalFormat("0.000000", DecimalFormatSymbols(Locale.US))
     }
 }
 

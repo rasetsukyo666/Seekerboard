@@ -101,6 +101,7 @@ class SeekerKeyboardService : InputMethodService() {
                 clipboardPreview = clipPreview,
                 clipboardRaw = clipRaw,
                 clipboardHistory = clipboardHistoryStore.load(),
+                clipboardPinned = clipboardHistoryStore.loadPinned(),
                 drafts = draftStore.load(),
                 selectedStakeIndex = selectedStakeIndex,
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
@@ -181,17 +182,35 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:disconnect" -> launchWalletBridge("disconnect")
             action == "action:send_down" -> draftStore.stepSendAmount(-0.01)
             action == "action:send_up" -> draftStore.stepSendAmount(0.01)
-            action == "action:send" -> launchWalletBridge(
-                "send",
-                mapOf("recipient" to clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty())
+            action == "action:send" -> launchWalletReview(
+                action = "send",
+                title = "Send SOL",
+                summary = "${draftStore.load().sendAmountSol} SOL to clipboard address",
+                detail = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty(),
+                extras = mapOf("recipient" to clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty())
             )
             action == "action:skr_stake_down" -> draftStore.stepSkrStakeAmount(-1)
             action == "action:skr_stake_up" -> draftStore.stepSkrStakeAmount(1)
-            action == "action:skr_stake" -> launchWalletBridge("skr_stake")
+            action == "action:skr_stake" -> launchWalletReview(
+                action = "skr_stake",
+                title = "Stake SKR",
+                summary = "${draftStore.load().skrStakeAmount} SKR via official Solana Mobile stake flow",
+                detail = "Approval opens outside the keyboard and returns with synced wallet state.",
+            )
             action == "action:skr_unstake_down" -> draftStore.stepSkrUnstakeAmount(-1)
             action == "action:skr_unstake_up" -> draftStore.stepSkrUnstakeAmount(1)
-            action == "action:skr_unstake" -> launchWalletBridge("skr_unstake")
-            action == "action:skr_withdraw" -> launchWalletBridge("skr_withdraw")
+            action == "action:skr_unstake" -> launchWalletReview(
+                action = "skr_unstake",
+                title = "Unstake SKR",
+                summary = "${draftStore.load().skrUnstakeAmount} SKR into cooldown",
+                detail = "Official SKR unstake request with wallet approval.",
+            )
+            action == "action:skr_withdraw" -> launchWalletReview(
+                action = "skr_withdraw",
+                title = "Withdraw SKR",
+                summary = "Move ready SKR back to the liquid account",
+                detail = "Uses the official SKR withdraw transaction.",
+            )
             action == "action:stake_prev" -> moveSelectedStake(-1)
             action == "action:stake_next" -> moveSelectedStake(1)
             action == "action:native_delegate" -> launchStakeAction("native_delegate")
@@ -234,10 +253,16 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
+            action == "action:pin_clip" -> {
+                clipboardHistoryStore.pin(clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this))
+                ephemeralHint = "clipboard pinned"
+            }
             action == "action:hist_1" -> pasteHistory(0)
             action == "action:hist_2" -> pasteHistory(1)
             action == "action:hist_3" -> pasteHistory(2)
             action == "action:hist_4" -> pasteHistory(3)
+            action == "action:pin_1" -> pastePinned(0)
+            action == "action:pin_2" -> pastePinned(1)
             action == "action:cursor_left" -> moveCursor(-1)
             action == "action:cursor_right" -> moveCursor(1)
             action == "action:delete_char" -> currentInputConnection?.deleteSurroundingText(1, 0)
@@ -340,6 +365,14 @@ class SeekerKeyboardService : InputMethodService() {
         alternateReplacementLength = 0
     }
 
+    private fun pastePinned(index: Int) {
+        val item = clipboardHistoryStore.loadPinned().getOrNull(index) ?: return
+        currentInputConnection?.commitText(item, 1)
+        ephemeralHint = "pasted pinned ${index + 1}"
+        alternateOptions = emptyList()
+        alternateReplacementLength = 0
+    }
+
     private fun moveCursor(delta: Int) {
         val inputConnection = currentInputConnection ?: return
         val keyCode = if (delta < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
@@ -394,13 +427,56 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun launchStakeAction(action: String) {
         val selected = walletStore.load().stakeAccountsPreview.getOrNull(selectedStakeIndex)
-        launchWalletBridge(
-            walletAction = action,
-            extras = buildMap {
-                put("destination_stake_pubkey", selected?.pubkey.orEmpty())
-                put("selected_stake_pubkey", selected?.pubkey.orEmpty())
-                put("selected_stake_lamports", selected?.lamports?.toString().orEmpty())
-                put("consolidation_source_count", settingsStore.load().consolidationSourceCountPreview.toString())
+        val extras = buildMap {
+            put("destination_stake_pubkey", selected?.pubkey.orEmpty())
+            put("selected_stake_pubkey", selected?.pubkey.orEmpty())
+            put("selected_stake_lamports", selected?.lamports?.toString().orEmpty())
+            put("consolidation_source_count", settingsStore.load().consolidationSourceCountPreview.toString())
+        }
+        val title = when (action) {
+            "native_delegate" -> "Delegate Native Stake"
+            "native_deactivate" -> "Deactivate Native Stake"
+            "native_withdraw" -> "Withdraw Native Stake"
+            "consolidate" -> "Consolidate Stake Accounts"
+            else -> "Wallet Action"
+        }
+        val summary = when (action) {
+            "native_delegate" -> "${selected?.let { shortStakeLabel(it.pubkey) } ?: "selected stake"} to Solana Mobile validator"
+            "native_deactivate" -> "Stop earning on ${selected?.let { shortStakeLabel(it.pubkey) } ?: "selected stake"}"
+            "native_withdraw" -> "Withdraw ${selected?.lamports?.let(::lamportsToSolLabel) ?: "selected balance"} to the main wallet"
+            "consolidate" -> "Merge ${settingsStore.load().consolidationSourceCountPreview} source account(s) into ${selected?.let { shortStakeLabel(it.pubkey) } ?: "selected stake"}"
+            else -> action
+        }
+        val detail = when (action) {
+            "consolidate" -> "Carries ${ConsolidationFeeModel.quote(settingsStore.load().consolidationSourceCountPreview).feeInSkr} SKR fee preview and lets the chain decide merge compatibility."
+            else -> "Approval opens outside the keyboard, then syncs state back into the IME."
+        }
+        launchWalletReview(
+            action = action,
+            title = title,
+            summary = summary,
+            detail = detail,
+            extras = extras,
+        )
+    }
+
+    private fun launchWalletReview(
+        action: String,
+        title: String,
+        summary: String,
+        detail: String,
+        extras: Map<String, String> = emptyMap(),
+    ) {
+        requestHideSelf(0)
+        startActivity(
+            Intent().apply {
+                setClassName(packageName, "com.androidlord.seekerwallet.WalletReviewActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("wallet_action", action)
+                putExtra("review_title", title)
+                putExtra("review_summary", summary)
+                putExtra("review_detail", detail)
+                extras.forEach { (key, value) -> putExtra(key, value) }
             }
         )
     }
@@ -417,5 +493,13 @@ class SeekerKeyboardService : InputMethodService() {
     private fun vibrate() {
         val vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator ?: return
         vibrator.vibrate(VibrationEffect.createOneShot(12, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun shortStakeLabel(pubkey: String): String {
+        return if (pubkey.length <= 12) pubkey else "${pubkey.take(4)}…${pubkey.takeLast(4)}"
+    }
+
+    private fun lamportsToSolLabel(lamports: Long): String {
+        return String.format(java.util.Locale.US, "%.3f SOL", lamports / 1_000_000_000.0)
     }
 }

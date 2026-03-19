@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
 import com.androidlord.seekerkeyboard.ime.KeyboardTheme
+import com.androidlord.seekerkeyboard.ime.UnifiedAccountPreview
 import com.androidlord.seekerwallet.data.WalletSessionStore
 import com.funkatronics.encoders.Base58
 import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
@@ -299,6 +300,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                     skrPosition = skrPosition,
                     stakeAccounts = bundle.stakeAccounts,
                     eligibleConsolidationSources = estimateEligibleConsolidationSources(bundle.stakeAccounts),
+                    unifiedAccounts = buildUnifiedAccounts(bundle.portfolio, bundle.stakeAccounts, skrPosition),
                 )
             }.onFailure { error ->
                 failAction("Refresh failed: ${error.message}")
@@ -613,6 +615,41 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
             withdrawableAmount = skrState?.withdrawableAmountForDisplay ?: "0",
             availableBalance = skrState?.availableBalance ?: "0",
             lastFeeLabel = state.value.skrPosition.lastFeeLabel,
+        )
+    }
+
+    private fun buildUnifiedAccounts(
+        portfolio: PortfolioSnapshot,
+        stakeAccounts: List<NativeStakeAccount>,
+        skrPosition: SkrPosition,
+    ): List<UnifiedAccountPreview> {
+        val nativeStakeLamports = stakeAccounts.sumOf { stake -> stake.lamports }
+        val activeStakeCount = stakeAccounts.count { !isStakeInactive(it) }
+        return listOf(
+            UnifiedAccountPreview(
+                title = "Spendable SOL",
+                balanceLabel = "${SIX_DECIMAL.format(portfolio.solBalance)} SOL",
+                detailLabel = "$" + TWO_DECIMAL.format(portfolio.solBalance * SOL_PRICE_HINT),
+                emphasis = if (portfolio.solBalance > 0.0) "liquid" else "empty",
+            ),
+            UnifiedAccountPreview(
+                title = "Native Stake",
+                balanceLabel = "${SIX_DECIMAL.format(nativeStakeLamports / 1_000_000_000.0)} SOL",
+                detailLabel = "$activeStakeCount account(s) · Solana Mobile validator",
+                emphasis = if (activeStakeCount > 0) "earning" else "idle",
+            ),
+            UnifiedAccountPreview(
+                title = "SKR Position",
+                balanceLabel = "${skrPosition.stakedAmount} staked",
+                detailLabel = "${skrPosition.withdrawableAmount} ready · ${skrPosition.apyLabel}",
+                emphasis = if (skrPosition.stakedAmount != "0") "staked" else "ready",
+            ),
+            UnifiedAccountPreview(
+                title = "Token Accounts",
+                balanceLabel = "${portfolio.tokenHoldings.size} tracked",
+                detailLabel = portfolio.tokenHoldings.take(2).joinToString(" · ") { "${it.amount} ${it.symbol}" }.ifBlank { "No funded token accounts" },
+                emphasis = if (portfolio.tokenHoldings.isNotEmpty()) "loaded" else "quiet",
+            ),
         )
     }
 

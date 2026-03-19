@@ -30,6 +30,11 @@
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:theme="@style/Theme.SeekerKeyboard" />
+        <activity
+            android:name="com.androidlord.seekerwallet.WalletReviewActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.SeekerKeyboard" />
     </application>
 
 </manifest>

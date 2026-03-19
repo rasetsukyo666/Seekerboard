@@ -6,6 +6,7 @@ import org.json.JSONObject
 import com.androidlord.seekerwallet.wallet.SolanaCluster
 import com.androidlord.seekerwallet.wallet.NativeStakeAccount
 import com.androidlord.seekerwallet.wallet.SkrPosition
+import com.androidlord.seekerkeyboard.ime.UnifiedAccountPreview
 
 class WalletSessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("seeker_wallet_session", Context.MODE_PRIVATE)
@@ -41,6 +42,8 @@ class WalletSessionStore(context: Context) {
             .remove(KEY_WALLET_ADDRESS)
             .remove(KEY_NATIVE_STAKE_ACCOUNT_COUNT)
             .remove(KEY_KEYBOARD_STATUS)
+            .remove(KEY_REVIEW_REQUIRED)
+            .remove(KEY_LAST_REVIEWED_ACTION)
             .apply()
     }
 
@@ -53,6 +56,7 @@ class WalletSessionStore(context: Context) {
         skrPosition: SkrPosition,
         stakeAccounts: List<NativeStakeAccount>,
         eligibleConsolidationSources: Int,
+        unifiedAccounts: List<UnifiedAccountPreview>,
     ) {
         val stakeJson = JSONArray()
         stakeAccounts.take(8).forEach { account ->
@@ -66,18 +70,36 @@ class WalletSessionStore(context: Context) {
                     .put("canWithdraw", account.canWithdraw)
             )
         }
+        val unifiedJson = JSONArray()
+        unifiedAccounts.take(6).forEach { account ->
+            unifiedJson.put(
+                JSONObject()
+                    .put("title", account.title)
+                    .put("balanceLabel", account.balanceLabel)
+                    .put("detailLabel", account.detailLabel)
+                    .put("emphasis", account.emphasis)
+            )
+        }
         prefs.edit()
             .putString(KEY_TOTAL_BALANCE_USD, totalBalanceUsd)
             .putString(KEY_SKR_STAKED, skrPosition.stakedAmount)
             .putString(KEY_SKR_WITHDRAWABLE, skrPosition.withdrawableAmount)
             .putString(KEY_SKR_APY, skrPosition.apyLabel)
             .putString(KEY_STAKE_ACCOUNTS_JSON, stakeJson.toString())
+            .putString(KEY_UNIFIED_ACCOUNTS_JSON, unifiedJson.toString())
             .putInt(KEY_ELIGIBLE_CONSOLIDATION_SOURCES, eligibleConsolidationSources.coerceAtLeast(0))
             .apply()
     }
 
     fun saveKeyboardStatus(status: String) {
         prefs.edit().putString(KEY_KEYBOARD_STATUS, status).apply()
+    }
+
+    fun saveReviewState(reviewRequired: Boolean, lastReviewedAction: String) {
+        prefs.edit()
+            .putBoolean(KEY_REVIEW_REQUIRED, reviewRequired)
+            .putString(KEY_LAST_REVIEWED_ACTION, lastReviewedAction)
+            .apply()
     }
 
     private companion object {
@@ -90,7 +112,10 @@ class WalletSessionStore(context: Context) {
         const val KEY_SKR_WITHDRAWABLE = "skr_withdrawable"
         const val KEY_SKR_APY = "skr_apy"
         const val KEY_STAKE_ACCOUNTS_JSON = "stake_accounts_json"
+        const val KEY_UNIFIED_ACCOUNTS_JSON = "unified_accounts_json"
         const val KEY_ELIGIBLE_CONSOLIDATION_SOURCES = "eligible_consolidation_sources"
         const val KEY_KEYBOARD_STATUS = "keyboard_status"
+        const val KEY_REVIEW_REQUIRED = "review_required"
+        const val KEY_LAST_REVIEWED_ACTION = "last_reviewed_action"
     }
 }

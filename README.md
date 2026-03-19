@@ -7,9 +7,12 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 - Compose Android settings/onboarding app
 - Android IME module with a private keyboard service scaffold
 - Keyboard utility strip with wallet, clipboard, theme, and settings drawers
+- Review handoff activity for high-risk wallet actions launched from the keyboard
 - Alternate chooser strip for long-press characters
 - Swipe gestures for cursor move and delete actions
 - Multi-layer symbols and stronger daily-driver key layout
+- Unified SOL + native stake + SKR portfolio snapshot carried into the keyboard
+- Clipboard history plus pinned clipboard snippets
 - Consolidation fee preview carried into the keyboard wallet drawer
 - Solana Mobile Wallet Adapter connect / disconnect
 - Sign In with Solana
@@ -25,13 +28,14 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 ## Intended architecture
 
 - Private keyboard/IME surface for quick wallet access
-- Companion app screen for transaction review, wallet connect, signing, and staking
+- Companion app screen for onboarding, advanced settings, and transaction review handoff
 
 ## Modules
 
 - `:app` settings/onboarding app only
 - `:ime` private keyboard service with wallet, clipboard, theme, and settings utility drawers
 - consolidation fee model currently carried as `10 SKR/source` with a `100 SKR` cap in the keyboard wallet drawer
+- unified account model currently surfaced as `Spendable SOL`, `Native Stake`, `SKR Position`, and `Token Accounts`
 
 ## Build
 
@@ -53,7 +57,7 @@ Build the IME library:
 ./gradlew :ime:assembleDebug
 ```
 
-CI is the intended verification path for builds and artifacts.
+CI is the intended verification path for builds and artifacts. The workflow now splits `app` and `ime` into separate jobs so failures isolate faster and reports upload even when one module breaks.
 
 ## Device QA
 
@@ -65,9 +69,18 @@ Recommended manual QA on Seeker-class devices:
 3. Test gesture actions:
    swipe on `space` for cursor movement, swipe on `⌫` for char/word deletion.
 4. Test wallet lifecycle:
-   connect, refresh, send, SKR action, native stake action, close wallet app, then return to the same text field.
+   connect, refresh, send, SKR action, native stake action, confirm the review screen copy is accurate, close wallet app, then return to the same text field.
 5. Test consolidation from the keyboard accounts drawer with both likely-compatible and risky source sets.
 6. Confirm the IME clears transient alternate chooser state after hiding/reopening.
+7. Test clipboard pinning and reuse from the keyboard clipboard drawer.
+8. Confirm the unified account rows match on-chain SOL balance, native stake totals, SKR totals, and token-account count after every wallet action.
+
+## Release discipline
+
+1. Treat `main` as CI-clean only.
+2. Ship device QA from Seeker-class hardware before promoting a build.
+3. Keep review-handoff copy accurate for every wallet action so keyboard intent matches wallet approval.
+4. Validate session restore after process death, wallet app switch, and IME hide/show.
 
 ## Next steps
 
