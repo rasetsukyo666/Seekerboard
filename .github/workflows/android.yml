@@ -37,24 +37,6 @@ jobs:
       - name: Build app
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      - name: Upload app APK
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: seekerkeyboard-app-debug
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
-
-      - name: Upload app reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: seekerkeyboard-app-reports
-          path: |
-            app/build/reports/**
-            app/build/outputs/logs/**
-          if-no-files-found: ignore
-
   ime:
     runs-on: ubuntu-latest
 
@@ -76,37 +58,3 @@ jobs:
 
       - name: Build ime
         run: ./gradlew :ime:assembleDebug --stacktrace
-
-      - name: Upload ime AAR
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: seekerkeyboard-ime-debug
-          path: ime/build/outputs/**/*.aar
-          if-no-files-found: ignore
-
-      - name: Upload ime reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: seekerkeyboard-ime-reports
-          path: |
-            ime/build/reports/**
-            ime/build/outputs/logs/**
-          if-no-files-found: ignore
-
-  qa-notes:
-    runs-on: ubuntu-latest
-    if: always()
-    needs:
-      - app
-      - ime
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Upload QA notes
-        uses: actions/upload-artifact@v4
-        with:
-          name: seekerkeyboard-device-qa
-          path: README.md
-          if-no-files-found: warn
