@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.androidlord.seekerkeyboard.ime.KeyboardTheme
 import com.androidlord.seekerwallet.theme.LocalSeekerPalette
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -98,6 +100,17 @@ fun SeekerWalletScreen(
                         onAmountChange = viewModel::updateAmount,
                         onMemoChange = viewModel::updateMemo,
                         onSend = { activity?.let(viewModel::sendTransfer) },
+                    )
+                }
+                item {
+                    KeyboardLabCard(
+                        state = state,
+                        onThemeSelected = viewModel::updateKeyboardTheme,
+                        onToggleNumberRow = viewModel::updateKeyboardNumberRow,
+                        onToggleWalletKey = viewModel::updateKeyboardWalletKey,
+                        onToggleHaptics = viewModel::updateKeyboardHaptics,
+                        onDecreaseHeight = { viewModel.updateKeyboardKeyHeight(-4) },
+                        onIncreaseHeight = { viewModel.updateKeyboardKeyHeight(4) },
                     )
                 }
                 item {
@@ -271,12 +284,94 @@ private fun SkrCard(
 }
 
 @Composable
+private fun KeyboardLabCard(
+    state: SeekerWalletUiState,
+    onThemeSelected: (KeyboardTheme) -> Unit,
+    onToggleNumberRow: (Boolean) -> Unit,
+    onToggleWalletKey: (Boolean) -> Unit,
+    onToggleHaptics: (Boolean) -> Unit,
+    onDecreaseHeight: () -> Unit,
+    onIncreaseHeight: () -> Unit,
+) {
+    InfoCard(title = "Keyboard Lab") {
+        Text(
+            text = "Companion settings for the private IME. The keyboard reads these preferences when it opens.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            KeyboardTheme.entries.forEach { option ->
+                AssistChip(
+                    onClick = { onThemeSelected(option) },
+                    label = { Text(option.label) },
+                    enabled = option != state.keyboardSettings.theme,
+                )
+            }
+        }
+        SettingRow(
+            title = "Number row",
+            value = if (state.keyboardSettings.showNumberRow) "On" else "Off",
+        ) {
+            Switch(
+                checked = state.keyboardSettings.showNumberRow,
+                onCheckedChange = onToggleNumberRow,
+            )
+        }
+        SettingRow(
+            title = "Wallet key",
+            value = if (state.keyboardSettings.showWalletKey) "Visible" else "Hidden",
+        ) {
+            Switch(
+                checked = state.keyboardSettings.showWalletKey,
+                onCheckedChange = onToggleWalletKey,
+            )
+        }
+        SettingRow(
+            title = "Haptics",
+            value = if (state.keyboardSettings.hapticsEnabled) "On" else "Off",
+        ) {
+            Switch(
+                checked = state.keyboardSettings.hapticsEnabled,
+                onCheckedChange = onToggleHaptics,
+            )
+        }
+        SettingRow(
+            title = "Key height",
+            value = "${state.keyboardSettings.keyHeightDp}dp",
+        ) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onDecreaseHeight) { Text("-") }
+                OutlinedButton(onClick = onIncreaseHeight) { Text("+") }
+            }
+        }
+    }
+}
+
+@Composable
 private fun RoadmapCard() {
     InfoCard(title = "Staking + Keyboard Roadmap") {
         Text(
             text = "Phase 1 keeps transfers and wallet auth live. Phase 2 now includes official SKR transactions plus native stake account management. Phase 3 adds an IME launcher that hands off to a secure review screen.",
             style = MaterialTheme.typography.bodyMedium,
         )
+    }
+}
+
+@Composable
+private fun SettingRow(
+    title: String,
+    value: String,
+    control: @Composable () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(value, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        control()
     }
 }
 

@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "SeekerKeyboard"
 include(":app")
+include(":ime")

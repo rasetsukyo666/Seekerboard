@@ -69,6 +69,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation(project(":ime"))
     implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.3")
     implementation("com.solanamobile:web3-solana:0.2.5")
     implementation("io.github.funkatronics:multimult:0.2.3")

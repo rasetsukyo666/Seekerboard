@@ -1,6 +1,7 @@
 package com.androidlord.seekerwallet.wallet
 
 import androidx.compose.ui.graphics.Color
+import com.androidlord.seekerkeyboard.ime.KeyboardSettings
 
 enum class SolanaCluster(
     val label: String,
@@ -38,6 +39,7 @@ data class SeekerWalletUiState(
     val assets: List<WalletAsset> = defaultAssets(),
     val stakeAccounts: List<NativeStakeAccount> = emptyList(),
     val skrPosition: SkrPosition = SkrPosition(),
+    val keyboardSettings: KeyboardSettings = KeyboardSettings(),
     val rails: List<SupportRail> = defaultRails(),
     val checklist: List<SeekerChecklistItem> = defaultChecklist(),
     val contacts: List<RecoveryContact> = defaultContacts(),

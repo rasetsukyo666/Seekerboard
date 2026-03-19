@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
+import com.androidlord.seekerkeyboard.ime.KeyboardTheme
 import com.androidlord.seekerwallet.data.WalletSessionStore
 import com.funkatronics.encoders.Base58
 import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
@@ -28,6 +30,7 @@ import java.util.Locale
 
 class SeekerWalletViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionStore = WalletSessionStore(application)
+    private val keyboardSettingsStore = KeyboardSettingsStore(application)
     private val rpcService = SolanaRpcService()
     private val nativeStakeService = NativeStakeService()
     private val skrOfficialService = SkrOfficialService()
@@ -55,6 +58,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                 amountSol = SeekerWalletUiState().receiveAmountSol,
                 memo = SeekerWalletUiState().receiveMemo,
             ),
+            keyboardSettings = keyboardSettingsStore.load(),
         )
     )
     val state: StateFlow<SeekerWalletUiState> = _state.asStateFlow()
@@ -109,6 +113,32 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
 
     fun updateSkrUnstakeAmount(value: String) {
         _state.update { it.copy(skrUnstakeAmount = value) }
+    }
+
+    fun updateKeyboardTheme(theme: KeyboardTheme) {
+        keyboardSettingsStore.saveTheme(theme)
+        _state.update { it.copy(keyboardSettings = keyboardSettingsStore.load(), statusMessage = "Keyboard theme updated.") }
+    }
+
+    fun updateKeyboardNumberRow(enabled: Boolean) {
+        keyboardSettingsStore.saveNumberRow(enabled)
+        _state.update { it.copy(keyboardSettings = keyboardSettingsStore.load(), statusMessage = "Keyboard number row updated.") }
+    }
+
+    fun updateKeyboardWalletKey(enabled: Boolean) {
+        keyboardSettingsStore.saveWalletKey(enabled)
+        _state.update { it.copy(keyboardSettings = keyboardSettingsStore.load(), statusMessage = "Wallet key visibility updated.") }
+    }
+
+    fun updateKeyboardHaptics(enabled: Boolean) {
+        keyboardSettingsStore.saveHapticsEnabled(enabled)
+        _state.update { it.copy(keyboardSettings = keyboardSettingsStore.load(), statusMessage = "Keyboard haptics updated.") }
+    }
+
+    fun updateKeyboardKeyHeight(delta: Int) {
+        val next = (_state.value.keyboardSettings.keyHeightDp + delta).coerceIn(40, 76)
+        keyboardSettingsStore.saveKeyHeightDp(next)
+        _state.update { it.copy(keyboardSettings = keyboardSettingsStore.load(), statusMessage = "Keyboard height updated.") }
     }
 
     fun updateCluster(cluster: SolanaCluster) {
