@@ -30,6 +30,7 @@ enum class WalletDrawerTab {
 enum class KeyboardLayer {
     ALPHA,
     SYMBOLS,
+    MORE_SYMBOLS,
 }
 
 enum class ShiftState {
@@ -65,13 +66,26 @@ class SeekerKeyboardView(
         listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
         listOf("shift", "*", "'", ":", ";", "!", "?", "%", "⌫"),
     )
+    private val moreSymbolRowSpecs = listOf(
+        listOf("~", "`", "|", "•", "√", "π", "÷", "×", "{", "}"),
+        listOf("£", "€", "¥", "^", "_", "=", "[", "]", "<", ">"),
+        listOf("shift", "\\", "©", "®", "°", "…", "¿", "¡", "⌫"),
+    )
     private val longPressMap = mapOf(
         "a" to "á",
+        "c" to "ç",
         "e" to "é",
         "i" to "í",
         "o" to "ó",
         "u" to "ú",
+        "n" to "ñ",
+        "y" to "ý",
+        "z" to "ž",
+        "l" to "ł",
         "s" to "$",
+        "!" to "¡",
+        "?" to "¿",
+        "\"" to "'",
         "." to ",",
         "," to ";",
     )
@@ -98,7 +112,11 @@ class SeekerKeyboardView(
             addView(buildPanel(settings, panelState, onUtilityPress))
         }
 
-        val rowSpecs = if (panelState.keyboardLayer == KeyboardLayer.SYMBOLS) symbolRowSpecs else alphaRowSpecs
+        val rowSpecs = when (panelState.keyboardLayer) {
+            KeyboardLayer.ALPHA -> alphaRowSpecs
+            KeyboardLayer.SYMBOLS -> symbolRowSpecs
+            KeyboardLayer.MORE_SYMBOLS -> moreSymbolRowSpecs
+        }
         if (settings.showNumberRow && panelState.keyboardLayer == KeyboardLayer.ALPHA) {
             addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, panelState, onKeyPress, onUtilityPress))
         }
@@ -230,6 +248,7 @@ class SeekerKeyboardView(
                 val selectedStake = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
                 card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${it.stakeState}" } ?: "none", settings))
                 card.addView(panelMeta("merge", "${panelState.consolidationFeeQuote.sourceCount} src · ${panelState.consolidationFeeQuote.feeInSkr} SKR carry", settings))
+                card.addView(panelMeta("compat", consolidationHint(panelState), settings))
                 panelState.walletSnapshot.stakeAccountsPreview.take(4).forEachIndexed { index, stake ->
                     val prefix = if (index == panelState.selectedStakeIndex) ">" else "•"
                     card.addView(panelText("$prefix ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)}", settings))
@@ -376,7 +395,11 @@ class SeekerKeyboardView(
             "space" -> "space"
             "wallet" -> "wallet"
             "enter" -> "enter"
-            "123" -> if (panelState.keyboardLayer == KeyboardLayer.SYMBOLS) "ABC" else "123"
+            "123" -> when (panelState.keyboardLayer) {
+                KeyboardLayer.ALPHA -> "123"
+                KeyboardLayer.SYMBOLS -> "#+="
+                KeyboardLayer.MORE_SYMBOLS -> "ABC"
+            }
             "shift" -> when (panelState.shiftState) {
                 ShiftState.OFF -> "shift"
                 ShiftState.ONCE -> "Shift"
@@ -410,6 +433,30 @@ class SeekerKeyboardView(
 
     private fun compactStatus(status: String): String {
         return status.substringBefore(".").take(56).ifBlank { "ready" }
+    }
+
+    private fun consolidationHint(panelState: KeyboardPanelState): String {
+        val destination = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
+            ?: return "pick destination"
+        val nonDestination = panelState.walletSnapshot.stakeAccountsPreview.filter { it.pubkey != destination.pubkey }
+        if (nonDestination.isEmpty()) return "need at least one source"
+
+        val likely = nonDestination.count {
+            it.delegationVote != null &&
+                it.delegationVote == destination.delegationVote &&
+                !isInactiveLike(it.stakeState) &&
+                !isInactiveLike(destination.stakeState)
+        }
+        val risky = nonDestination.size - likely
+        return when {
+            likely > 0 && risky == 0 -> "$likely likely mergeable"
+            likely > 0 -> "$likely likely · $risky risky"
+            else -> "chain will decide · preview risky"
+        }
+    }
+
+    private fun isInactiveLike(state: String): Boolean {
+        return state == "inactive" || state == "undelegated" || state == "initialized"
     }
 
     private fun applyBackground(settings: KeyboardSettings) {

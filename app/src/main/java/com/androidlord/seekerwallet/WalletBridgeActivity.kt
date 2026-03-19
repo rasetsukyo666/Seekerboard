@@ -211,12 +211,13 @@ class WalletBridgeActivity : ComponentActivity() {
         val address = requireWalletAddress()
         val cluster = sessionStore.loadCluster()
         val accounts = rpcService.fetchStakeAccounts(cluster.rpcUrl, address).sortedByDescending { it.lamports }
-        val destination = selectConsolidationDestination(accounts)
+        val preferredDestination = intent?.getStringExtra("destination_stake_pubkey").orEmpty()
+        val destination = accounts.firstOrNull { it.pubkey == preferredDestination } ?: selectConsolidationDestination(accounts)
         require(destination != null) { "No destination stake account available for consolidation." }
 
         val sourceLimit = intent?.getStringExtra("consolidation_source_count")?.toIntOrNull()?.coerceIn(1, 99) ?: 1
         val sources = selectConsolidationSources(destination, accounts, sourceLimit)
-        require(sources.isNotEmpty()) { "No merge-compatible source stake accounts available." }
+        require(sources.isNotEmpty()) { "No source stake accounts available for consolidation." }
 
         val blockhash = rpcService.getLatestBlockhash(cluster.rpcUrl)
         val txs = sources.map { source ->
@@ -337,12 +338,21 @@ class WalletBridgeActivity : ComponentActivity() {
         accounts: List<NativeStakeAccount>,
         limit: Int,
     ): List<NativeStakeAccount> {
-        return accounts
+        val likelyCompatible = accounts
             .asSequence()
             .filter { it.pubkey != destination.pubkey }
             .filter { it.delegationVote != null && it.delegationVote == destination.delegationVote }
             .filter { !isStakeInactive(it) }
-            .take(limit)
+            .take(limit.coerceAtLeast(1))
+            .toList()
+        if (likelyCompatible.isNotEmpty()) return likelyCompatible
+
+        // Soft validation mode: if no likely-compatible sources are found, still allow
+        // submission against other non-destination stake accounts and let the chain decide.
+        return accounts
+            .asSequence()
+            .filter { it.pubkey != destination.pubkey }
+            .take(limit.coerceAtLeast(1))
             .toList()
     }
 

@@ -167,10 +167,12 @@ class SeekerKeyboardService : InputMethodService() {
     }
 
     private fun toggleSymbols() {
-        keyboardLayer = if (keyboardLayer == KeyboardLayer.ALPHA) KeyboardLayer.SYMBOLS else KeyboardLayer.ALPHA
-        if (keyboardLayer == KeyboardLayer.SYMBOLS) {
-            shiftState = ShiftState.OFF
+        keyboardLayer = when (keyboardLayer) {
+            KeyboardLayer.ALPHA -> KeyboardLayer.SYMBOLS
+            KeyboardLayer.SYMBOLS -> KeyboardLayer.MORE_SYMBOLS
+            KeyboardLayer.MORE_SYMBOLS -> KeyboardLayer.ALPHA
         }
+        shiftState = ShiftState.OFF
     }
 
     private fun moveSelectedStake(delta: Int) {
@@ -239,6 +241,7 @@ class SeekerKeyboardService : InputMethodService() {
         launchWalletBridge(
             walletAction = action,
             extras = buildMap {
+                put("destination_stake_pubkey", selected?.pubkey.orEmpty())
                 put("selected_stake_pubkey", selected?.pubkey.orEmpty())
                 put("selected_stake_lamports", selected?.lamports?.toString().orEmpty())
                 put("consolidation_source_count", settingsStore.load().consolidationSourceCountPreview.toString())
