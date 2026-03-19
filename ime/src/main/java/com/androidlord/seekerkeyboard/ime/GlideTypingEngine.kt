@@ -44,15 +44,29 @@ object GlideTypingEngine {
 
     fun suggestCorrections(language: KeyboardLanguage, rawWord: String, limit: Int = 3): List<String> {
         val normalized = normalize(rawWord)
-        if (normalized.length < 2) return emptyList()
+        if (normalized.length < 3) return emptyList()
         return lexicon(language)
             .distinct()
             .map { it to score(normalized, normalize(it)) }
-            .filter { (_, score) -> score > 4 }
+            .filter { (_, score) -> score > 10 }
             .sortedByDescending { (_, score) -> score }
             .map { it.first }
             .filter { it != normalized }
             .take(limit)
+    }
+
+    fun bestAutocorrect(language: KeyboardLanguage, rawWord: String): String? {
+        val normalized = normalize(rawWord)
+        if (normalized.length < 5) return null
+        val ranked = lexicon(language)
+            .distinct()
+            .map { it to normalize(it) }
+            .filter { (_, candidate) -> candidate.firstOrNull() == normalized.firstOrNull() }
+            .map { (source, candidate) -> Triple(source, candidate, score(normalized, candidate)) }
+            .sortedByDescending { it.third }
+        val best = ranked.firstOrNull() ?: return null
+        val distance = levenshtein(normalized, best.second)
+        return if (distance <= 1 && best.third >= 24) best.first else null
     }
 
     private fun score(path: String, candidate: String): Int {

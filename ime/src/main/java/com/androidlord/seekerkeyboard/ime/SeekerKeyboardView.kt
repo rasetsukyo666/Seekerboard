@@ -326,7 +326,7 @@ class SeekerKeyboardView(
                             text = option
                             isAllCaps = false
                             typeface = resolvedTypeface(settings)
-                            setTextColor(foregroundColor(settings))
+                            setTextColor(Color.BLACK)
                             background = pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(16))
                             layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
                                 marginStart = dp(3)
@@ -341,7 +341,7 @@ class SeekerKeyboardView(
                         text = "x"
                         isAllCaps = false
                         typeface = resolvedTypeface(settings)
-                        setTextColor(foregroundColor(settings))
+                        setTextColor(Color.BLACK)
                         background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(16))
                         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
                             marginStart = dp(3)

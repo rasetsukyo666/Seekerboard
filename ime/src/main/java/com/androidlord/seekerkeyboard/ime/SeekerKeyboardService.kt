@@ -523,7 +523,7 @@ class SeekerKeyboardService : InputMethodService() {
     private fun maybeAutocorrectCurrentWord(settings: KeyboardSettings) {
         if (!settings.autocorrectEnabled) return
         val current = currentWordBeforeCursor()
-        val suggestion = GlideTypingEngine.suggestCorrections(settings.language, current, limit = 1).firstOrNull() ?: return
+        val suggestion = GlideTypingEngine.bestAutocorrect(settings.language, current) ?: return
         if (suggestion.equals(current, ignoreCase = true)) return
         replaceCurrentWord(suggestion)
         ephemeralHint = "$current -> $suggestion"
