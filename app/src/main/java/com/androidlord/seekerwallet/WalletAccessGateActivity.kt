@@ -1,14 +1,14 @@
 package com.androidlord.seekerwallet
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.androidlord.seekerkeyboard.ime.WalletAccessGuardStore
 import com.androidlord.seekerwallet.data.WalletSessionStore
-import java.util.concurrent.Executors
 
-class WalletAccessGateActivity : ComponentActivity() {
+class WalletAccessGateActivity : AppCompatActivity() {
     private lateinit var accessGuardStore: WalletAccessGuardStore
     private lateinit var sessionStore: WalletSessionStore
 
@@ -27,7 +27,7 @@ class WalletAccessGateActivity : ComponentActivity() {
             return
         }
 
-        val executor = Executors.newSingleThreadExecutor()
+        val executor = ContextCompat.getMainExecutor(this)
         val prompt = BiometricPrompt(
             this,
             executor,
@@ -56,7 +56,7 @@ class WalletAccessGateActivity : ComponentActivity() {
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Unlock SeekerKeyboard Wallet")
                 .setSubtitle("Use biometrics or device PIN to open wallet controls.")
-                .setAllowedAuthenticators(authenticators)
+                .setDeviceCredentialAllowed(true)
                 .build()
         )
     }
