@@ -55,6 +55,7 @@ data class KeyboardPanelState(
     val keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA,
     val shiftState: ShiftState = ShiftState.OFF,
     val ephemeralHint: String = "",
+    val alternateOptions: List<String> = emptyList(),
 )
 
 class SeekerKeyboardView(
@@ -111,6 +112,9 @@ class SeekerKeyboardView(
         removeAllViews()
         applyBackground(settings)
 
+        if (panelState.alternateOptions.isNotEmpty()) {
+            addView(buildAlternatesStrip(panelState.alternateOptions, settings, onUtilityPress))
+        }
         if (panelState.ephemeralHint.isNotBlank()) {
             addView(buildHintStrip(panelState.ephemeralHint, settings))
         }
@@ -162,6 +166,54 @@ class SeekerKeyboardView(
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(6)
             }
+        }
+    }
+
+    private fun buildAlternatesStrip(
+        options: List<String>,
+        settings: KeyboardSettings,
+        onUtilityPress: (String) -> Unit,
+    ): View {
+        return LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(6)
+            }
+            options.forEach { option ->
+                addView(
+                    Button(context).apply {
+                        text = option
+                        isAllCaps = false
+                        setTextColor(foregroundColor(settings))
+                        background = pillDrawable(
+                            parseColorOrFallback(settings.accentHex, accentColor(settings.theme)),
+                            dpFloat(14),
+                        )
+                        layoutParams = LayoutParams(0, dp(38), 1f).apply {
+                            marginStart = dp(2)
+                            marginEnd = dp(2)
+                        }
+                        setOnClickListener { onUtilityPress("action:pick_alt:$option") }
+                    }
+                )
+            }
+            addView(
+                Button(context).apply {
+                    text = "close"
+                    isAllCaps = false
+                    setTextColor(foregroundColor(settings))
+                    background = pillDrawable(
+                        parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)),
+                        dpFloat(14),
+                    )
+                    layoutParams = LayoutParams(0, dp(38), 1f).apply {
+                        marginStart = dp(2)
+                        marginEnd = dp(2)
+                    }
+                    setOnClickListener { onUtilityPress("action:clear_alts") }
+                }
+            )
         }
     }
 
@@ -427,8 +479,7 @@ class SeekerKeyboardView(
             }
             alternatesMap[label]?.let { alternates ->
                 setOnLongClickListener {
-                    onKeyPress(alternates.first())
-                    onUtilityPress("action:hint:${label}->${alternates.joinToString(" ")}")
+                    onUtilityPress("action:show_alts:${alternates.joinToString("|")}")
                     true
                 }
             }

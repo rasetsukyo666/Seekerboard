@@ -26,6 +26,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA
     private var shiftState: ShiftState = ShiftState.OFF
     private var ephemeralHint: String = ""
+    private var alternateOptions: List<String> = emptyList()
 
     override fun onCreate() {
         super.onCreate()
@@ -46,6 +47,32 @@ class SeekerKeyboardService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         renderKeyboard()
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        alternateOptions = emptyList()
+        ephemeralHint = ""
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        alternateOptions = emptyList()
+        ephemeralHint = ""
+    }
+
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int,
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        if (::keyboardView.isInitialized) {
+            renderKeyboard()
+        }
     }
 
     private fun renderKeyboard() {
@@ -74,6 +101,7 @@ class SeekerKeyboardService : InputMethodService() {
                 keyboardLayer = keyboardLayer,
                 shiftState = shiftState,
                 ephemeralHint = ephemeralHint,
+                alternateOptions = alternateOptions,
             ),
             onKeyPress = ::handleKeyPress,
             onUtilityPress = ::handleUtilityPress,
@@ -92,6 +120,9 @@ class SeekerKeyboardService : InputMethodService() {
             "enter" -> inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             "wallet" -> togglePanel(UtilityPanel.WALLET)
             else -> inputConnection.commitText(key, 1)
+        }
+        if (key !in setOf("wallet")) {
+            alternateOptions = emptyList()
         }
         if (key == "space") {
             ephemeralHint = ""
@@ -142,6 +173,22 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:cycle_shift" -> cycleShiftState()
             action == "action:toggle_symbols" -> toggleSymbols()
             action.startsWith("action:hint:") -> ephemeralHint = action.removePrefix("action:hint:")
+            action.startsWith("action:show_alts:") -> {
+                alternateOptions = action.removePrefix("action:show_alts:")
+                    .split('|')
+                    .filter { it.isNotBlank() }
+                ephemeralHint = "pick alternate"
+            }
+            action.startsWith("action:pick_alt:") -> {
+                val value = action.removePrefix("action:pick_alt:")
+                currentInputConnection?.commitText(value, 1)
+                alternateOptions = emptyList()
+                ephemeralHint = value
+            }
+            action == "action:clear_alts" -> {
+                alternateOptions = emptyList()
+                ephemeralHint = ""
+            }
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
@@ -220,6 +267,7 @@ class SeekerKeyboardService : InputMethodService() {
         val item = clipboardHistoryStore.load().getOrNull(index) ?: return
         currentInputConnection?.commitText(item, 1)
         ephemeralHint = "pasted history ${index + 1}"
+        alternateOptions = emptyList()
     }
 
     private fun moveCursor(delta: Int) {
@@ -228,6 +276,7 @@ class SeekerKeyboardService : InputMethodService() {
         inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
         inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
         ephemeralHint = if (delta < 0) "cursor left" else "cursor right"
+        alternateOptions = emptyList()
     }
 
     private fun deletePreviousWord() {
@@ -236,6 +285,7 @@ class SeekerKeyboardService : InputMethodService() {
         if (before.isBlank()) {
             inputConnection.deleteSurroundingText(1, 0)
             ephemeralHint = "delete"
+            alternateOptions = emptyList()
             return
         }
         val trimmed = before.trimEnd()
@@ -244,6 +294,7 @@ class SeekerKeyboardService : InputMethodService() {
         val deleteCount = (wordLength + spacesLength).coerceAtLeast(1)
         inputConnection.deleteSurroundingText(deleteCount, 0)
         ephemeralHint = "delete word"
+        alternateOptions = emptyList()
     }
 
     private fun launchSettingsApp(extraKey: String? = null, extraValue: String? = null) {

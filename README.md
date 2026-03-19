@@ -7,6 +7,9 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 - Compose Android settings/onboarding app
 - Android IME module with a private keyboard service scaffold
 - Keyboard utility strip with wallet, clipboard, theme, and settings drawers
+- Alternate chooser strip for long-press characters
+- Swipe gestures for cursor move and delete actions
+- Multi-layer symbols and stronger daily-driver key layout
 - Consolidation fee preview carried into the keyboard wallet drawer
 - Solana Mobile Wallet Adapter connect / disconnect
 - Sign In with Solana
@@ -50,9 +53,25 @@ Build the IME library:
 ./gradlew :ime:assembleDebug
 ```
 
+CI is the intended verification path for builds and artifacts.
+
+## Device QA
+
+Recommended manual QA on Seeker-class devices:
+
+1. Enable `SeekerKeyboard`, switch to it, and confirm the IME reopens cleanly after app switches.
+2. Test typing basics:
+   `shift`, `caps`, `123`, `#+=`, backspace, long-press alternates, and clipboard history.
+3. Test gesture actions:
+   swipe on `space` for cursor movement, swipe on `⌫` for char/word deletion.
+4. Test wallet lifecycle:
+   connect, refresh, send, SKR action, native stake action, close wallet app, then return to the same text field.
+5. Test consolidation from the keyboard accounts drawer with both likely-compatible and risky source sets.
+6. Confirm the IME clears transient alternate chooser state after hiding/reopening.
+
 ## Next steps
 
-1. Extract the transaction-building logic from the prior React Native app into Kotlin services.
-2. Validate the native stake instruction account metas against device wallet signing.
-3. Add stake-account creation flow for first-time native staking.
-4. Expand the IME toward HeliBoard-level customization, layouts, gesture behavior, and inline wallet operations.
+1. Add true popup-style alternate selection anchored to touch position.
+2. Expand swipe input beyond gesture actions into fuller glide typing support.
+3. Add more layout modes, language packs, and per-layout long-press data.
+4. Keep tightening Seeker/Saga device QA around IME lifecycle and wallet return flows.

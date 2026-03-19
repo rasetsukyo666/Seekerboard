@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,6 +26,14 @@ jobs:
 
       - name: Build app and ime
         run: ./gradlew :app:assembleDebug :ime:assembleDebug
+
+      - name: Upload QA notes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seekerkeyboard-device-qa
+          path: README.md
+          if-no-files-found: warn
 
       - name: Upload app APK
         if: always()
