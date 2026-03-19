@@ -7,6 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import com.androidlord.seekerkeyboard.ime.ConsolidationFeeModel
 import com.androidlord.seekerkeyboard.ime.UnifiedAccountPreview
 import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
+import com.androidlord.seekerkeyboard.ime.WalletAccessGuardStore
 import com.androidlord.seekerwallet.data.WalletSessionStore
 import com.androidlord.seekerwallet.wallet.NativeStakeAccount
 import com.androidlord.seekerwallet.wallet.NativeStakeService
@@ -34,6 +35,7 @@ import java.util.Locale
 class WalletBridgeActivity : ComponentActivity() {
     private lateinit var sessionStore: WalletSessionStore
     private lateinit var draftStore: WalletActionDraftStore
+    private lateinit var walletAccessGuardStore: WalletAccessGuardStore
     private val rpcService = SolanaRpcService()
     private val nativeStakeService = NativeStakeService()
     private val skrOfficialService = SkrOfficialService()
@@ -53,6 +55,7 @@ class WalletBridgeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         sessionStore = WalletSessionStore(applicationContext)
         draftStore = WalletActionDraftStore(applicationContext)
+        walletAccessGuardStore = WalletAccessGuardStore(applicationContext)
         lifecycleScope.launch {
             runCatching {
                 when (intent?.getStringExtra("wallet_action").orEmpty()) {
@@ -71,7 +74,7 @@ class WalletBridgeActivity : ComponentActivity() {
             }.onFailure { error ->
                 sessionStore.saveKeyboardStatus(error.message ?: "Keyboard wallet action failed.")
             }
-            finishAndRemoveTask()
+            finish()
         }
     }
 
@@ -85,7 +88,8 @@ class WalletBridgeActivity : ComponentActivity() {
                 walletAdapter.authToken = result.authResult.authToken
                 refreshSnapshot(address, sessionStore.loadCluster())
                 sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "connect")
-                sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}.")
+                walletAccessGuardStore.unlock()
+                sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}. Wallet session stored.")
             }
             is TransactionResult.NoWalletFound -> sessionStore.saveKeyboardStatus("No MWA wallet found on this device.")
             is TransactionResult.Failure -> sessionStore.saveKeyboardStatus("Wallet connection failed: ${result.e.message}")
@@ -98,6 +102,7 @@ class WalletBridgeActivity : ComponentActivity() {
             is TransactionResult.Success, is TransactionResult.NoWalletFound -> {
                 sessionStore.clearSession()
                 walletAdapter.authToken = null
+                walletAccessGuardStore.lock()
                 sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "disconnect")
                 sessionStore.saveKeyboardStatus("Keyboard wallet session cleared.")
             }

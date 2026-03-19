@@ -19,6 +19,7 @@ class SeekerKeyboardService : InputMethodService() {
     private lateinit var draftStore: WalletActionDraftStore
     private lateinit var clipboardHistoryStore: ClipboardHistoryStore
     private lateinit var walletStore: WalletSessionSnapshotStore
+    private lateinit var walletAccessGuardStore: WalletAccessGuardStore
     private lateinit var clipboardManager: ClipboardManager
     private lateinit var keyboardView: SeekerKeyboardView
     private var activePanel: UtilityPanel = UtilityPanel.NONE
@@ -39,6 +40,7 @@ class SeekerKeyboardService : InputMethodService() {
         draftStore = WalletActionDraftStore(this)
         clipboardHistoryStore = ClipboardHistoryStore(this)
         walletStore = WalletSessionSnapshotStore(this)
+        walletAccessGuardStore = WalletAccessGuardStore(this)
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
 
@@ -51,6 +53,11 @@ class SeekerKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        if (walletAccessGuardStore.consumePendingOpenWallet() && walletAccessGuardStore.isUnlocked()) {
+            walletDrawerTab = WalletDrawerTab.OVERVIEW
+            activePanel = UtilityPanel.WALLET
+            keyboardLayer = KeyboardLayer.ALPHA
+        }
         renderKeyboard()
     }
 
@@ -132,6 +139,10 @@ class SeekerKeyboardService : InputMethodService() {
         if (settings.hapticsEnabled) {
             vibrate()
         }
+        if (activePanel == UtilityPanel.WALLET && key != "wallet") {
+            activePanel = UtilityPanel.NONE
+            keyboardLayer = KeyboardLayer.ALPHA
+        }
         when (key) {
             "⌫" -> deleteSelectionOrPreviousChar()
             "space" -> {
@@ -140,6 +151,7 @@ class SeekerKeyboardService : InputMethodService() {
             }
             "enter" -> inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             "wallet" -> togglePanel(UtilityPanel.WALLET)
+            "emoji" -> toggleEmoji()
             else -> {
                 if (key.startsWith("glide:")) {
                     val resolution = GlideTypingEngine.resolve(settings.language, key.removePrefix("glide:"))
@@ -192,7 +204,12 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:wallet_overview" -> walletDrawerTab = WalletDrawerTab.OVERVIEW
             action == "action:wallet_stake" -> walletDrawerTab = WalletDrawerTab.STAKE
             action == "action:wallet_accounts" -> walletDrawerTab = WalletDrawerTab.ACCOUNTS
-            action == "action:connect" -> launchWalletBridge("connect")
+            action == "action:connect" -> launchWalletReview(
+                action = "connect",
+                title = "Connect Wallet",
+                summary = "Authorize SeekerKeyboard and establish a persistent session for wallet actions.",
+                detail = "First connect should complete wallet authorization and session approval before returning to the keyboard.",
+            )
             action == "action:refresh" -> launchWalletBridge("refresh")
             action == "action:disconnect" -> launchWalletBridge("disconnect")
             action == "action:send_less" -> draftStore.stepSendAmount(-0.01)
@@ -234,6 +251,7 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:consolidate" -> launchStakeAction("consolidate")
             action == "action:cycle_shift" -> cycleShiftState()
             action == "action:toggle_symbols" -> toggleSymbols()
+            action == "action:toggle_emoji" -> toggleEmoji()
             action.startsWith("action:hint:") -> ephemeralHint = action.removePrefix("action:hint:")
             action.startsWith("action:show_alts:") -> {
                 val payload = action.removePrefix("action:show_alts:")
@@ -313,14 +331,29 @@ class SeekerKeyboardService : InputMethodService() {
     }
 
     private fun toggleSymbols() {
+        if (activePanel == UtilityPanel.WALLET) {
+            keyboardLayer = KeyboardLayer.ALPHA
+            return
+        }
         keyboardLayer = when (keyboardLayer) {
             KeyboardLayer.ALPHA -> KeyboardLayer.SYMBOLS
             KeyboardLayer.SYMBOLS -> KeyboardLayer.MORE_SYMBOLS
             KeyboardLayer.MORE_SYMBOLS -> KeyboardLayer.ALPHA
+            KeyboardLayer.EMOJI -> KeyboardLayer.ALPHA
         }
         shiftState = ShiftState.OFF
         alternateOptions = emptyList()
         alternateReplacementLength = 0
+    }
+
+    private fun toggleEmoji() {
+        keyboardLayer = if (keyboardLayer == KeyboardLayer.EMOJI) KeyboardLayer.ALPHA else KeyboardLayer.EMOJI
+        shiftState = ShiftState.OFF
+        alternateOptions = emptyList()
+        alternateReplacementLength = 0
+        if (activePanel == UtilityPanel.WALLET) {
+            activePanel = UtilityPanel.NONE
+        }
     }
 
     private fun moveSelectedStake(delta: Int) {
@@ -334,7 +367,13 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun togglePanel(panel: UtilityPanel) {
         if (panel == UtilityPanel.WALLET && activePanel != panel) {
+            if (!walletAccessGuardStore.isUnlocked()) {
+                launchWalletAccessGate()
+                ephemeralHint = "unlock wallet"
+                return
+            }
             walletDrawerTab = WalletDrawerTab.OVERVIEW
+            keyboardLayer = KeyboardLayer.ALPHA
         }
         activePanel = if (activePanel == panel) UtilityPanel.NONE else panel
     }
@@ -464,6 +503,17 @@ class SeekerKeyboardService : InputMethodService() {
         )
     }
 
+    private fun launchWalletAccessGate() {
+        requestHideSelf(0)
+        startActivity(
+            Intent().apply {
+                setClassName(packageName, "com.androidlord.seekerwallet.WalletAccessGateActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("open_wallet_on_success", true)
+            }
+        )
+    }
+
     private fun launchStakeAction(action: String) {
         val selected = walletStore.load().stakeAccountsPreview.getOrNull(selectedStakeIndex)
         val autoSourceCount = walletStore.load().eligibleConsolidationSources.coerceIn(1, 3)
@@ -565,7 +615,7 @@ class SeekerKeyboardService : InputMethodService() {
         if (activePanel != UtilityPanel.NONE) return true
         if (alternateOptions.isNotEmpty()) return true
         if (settings.suggestionsEnabled || settings.autocorrectEnabled) return true
-        if (key == "wallet" || key == "space" || key == "enter" || key == "⌫") return true
+        if (key == "wallet" || key == "emoji" || key == "space" || key == "enter" || key == "⌫") return true
         if (key.startsWith("glide:")) return true
         return shiftState == ShiftState.ONCE
     }

@@ -41,6 +41,7 @@ enum class KeyboardLayer {
     ALPHA,
     SYMBOLS,
     MORE_SYMBOLS,
+    EMOJI,
 }
 
 enum class ShiftState {
@@ -117,12 +118,15 @@ class SeekerKeyboardView(
         }
 
         val alphaRows = alphaRows(settings.language)
-        val rowSpecs = when (panelState.keyboardLayer) {
-            KeyboardLayer.ALPHA -> alphaRows
-            KeyboardLayer.SYMBOLS -> symbolRows(settings.language)
-            KeyboardLayer.MORE_SYMBOLS -> moreSymbolRows(settings.language)
+        val rowSpecs = when {
+            panelState.activePanel == UtilityPanel.WALLET -> alphaRows
+            panelState.keyboardLayer == KeyboardLayer.ALPHA -> alphaRows
+            panelState.keyboardLayer == KeyboardLayer.SYMBOLS -> symbolRows(settings.language)
+            panelState.keyboardLayer == KeyboardLayer.MORE_SYMBOLS -> moreSymbolRows(settings.language)
+            panelState.keyboardLayer == KeyboardLayer.EMOJI -> emojiRows()
+            else -> alphaRows
         }
-        if (settings.showNumberRow && panelState.keyboardLayer == KeyboardLayer.ALPHA) {
+        if (settings.showNumberRow && panelState.keyboardLayer == KeyboardLayer.ALPHA && panelState.activePanel != UtilityPanel.WALLET) {
             addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, panelState, 0, onKeyPress, onUtilityPress))
         }
 
@@ -130,8 +134,11 @@ class SeekerKeyboardView(
             addView(buildRow(row, settings, panelState, index, onKeyPress, onUtilityPress))
         }
 
-        val bottomRow = mutableListOf("123", ",")
-        if (settings.showWalletKey) bottomRow += "wallet"
+        val bottomRow = mutableListOf<String>()
+        if (panelState.activePanel != UtilityPanel.WALLET) {
+            bottomRow += "123"
+        }
+        bottomRow += listOf(",", "emoji")
         bottomRow += listOf("space", ".", "enter")
         addView(buildRow(bottomRow, settings, panelState, 3, onKeyPress, onUtilityPress))
     }
@@ -204,6 +211,14 @@ class SeekerKeyboardView(
                 listOf("shift", "\\", "©", "®", "°", "…", "ª", "§", "⌫"),
             )
         }
+    }
+
+    private fun emojiRows(): List<List<String>> {
+        return listOf(
+            listOf("😀", "😂", "🥲", "😍", "😎", "🤝", "🙏", "🔥", "✨", "💚"),
+            listOf("🚀", "📈", "💸", "🪙", "🔒", "🫡", "👀", "✅", "❌", "⚡"),
+            listOf("shift", "🎉", "📋", "💳", "🛡️", "🧠", "🌊", "🌙", "⌫"),
+        )
     }
 
     private fun alternatesFor(language: KeyboardLanguage): Map<String, List<String>> {
@@ -623,6 +638,7 @@ class SeekerKeyboardView(
                         when (label) {
                             "shift" -> onUtilityPress("action:cycle_shift")
                             "123" -> onUtilityPress("action:toggle_symbols")
+                            "emoji" -> onUtilityPress("action:toggle_emoji")
                             else -> onKeyPress(resolveKeyValue(label, panelState))
                         }
                     }
@@ -886,11 +902,13 @@ class SeekerKeyboardView(
         return when (label) {
             "space" -> "space"
             "wallet" -> "wallet"
+            "emoji" -> if (panelState.keyboardLayer == KeyboardLayer.EMOJI) "ABC" else "😊"
             "enter" -> "enter"
             "123" -> when (panelState.keyboardLayer) {
                 KeyboardLayer.ALPHA -> "123"
                 KeyboardLayer.SYMBOLS -> "#+="
                 KeyboardLayer.MORE_SYMBOLS -> "ABC"
+                KeyboardLayer.EMOJI -> "123"
             }
             "shift" -> when (panelState.shiftState) {
                 ShiftState.OFF -> "shift"
@@ -903,7 +921,7 @@ class SeekerKeyboardView(
 
     private fun resolveKeyValue(label: String, panelState: KeyboardPanelState): String {
         return when (label) {
-            "⌫", "shift", "space", "wallet", "enter", "123" -> label
+            "⌫", "shift", "space", "wallet", "enter", "123", "emoji" -> label
             else -> {
                 val shouldUppercase = panelState.keyboardLayer == KeyboardLayer.ALPHA &&
                     panelState.shiftState != ShiftState.OFF &&

@@ -25,6 +25,12 @@
             </intent-filter>
         </activity>
         <activity
+            android:name="com.androidlord.seekerwallet.WalletAccessGateActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.SeekerKeyboard" />
+        <activity
             android:name="com.androidlord.seekerwallet.WalletBridgeActivity"
             android:exported="false"
             android:excludeFromRecents="true"
