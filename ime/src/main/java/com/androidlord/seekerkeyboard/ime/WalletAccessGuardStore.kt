@@ -5,17 +5,17 @@ import android.content.Context
 class WalletAccessGuardStore(context: Context) {
     private val prefs = context.getSharedPreferences("seeker_wallet_session", Context.MODE_PRIVATE)
 
-    fun isUnlocked(nowMs: Long = System.currentTimeMillis()): Boolean {
-        return prefs.getLong(KEY_UNLOCKED_UNTIL, 0L) > nowMs
+    fun isUnlocked(): Boolean {
+        return prefs.getBoolean(KEY_UNLOCKED_ONCE, false)
     }
 
-    fun unlock(durationMs: Long = DEFAULT_UNLOCK_MS) {
-        prefs.edit().putLong(KEY_UNLOCKED_UNTIL, System.currentTimeMillis() + durationMs).apply()
+    fun unlock() {
+        prefs.edit().putBoolean(KEY_UNLOCKED_ONCE, true).apply()
     }
 
     fun lock() {
         prefs.edit()
-            .putLong(KEY_UNLOCKED_UNTIL, 0L)
+            .putBoolean(KEY_UNLOCKED_ONCE, false)
             .putBoolean(KEY_PENDING_OPEN_WALLET, false)
             .apply()
     }
@@ -33,8 +33,7 @@ class WalletAccessGuardStore(context: Context) {
     }
 
     companion object {
-        private const val KEY_UNLOCKED_UNTIL = "wallet_unlocked_until"
+        private const val KEY_UNLOCKED_ONCE = "wallet_unlocked_once"
         private const val KEY_PENDING_OPEN_WALLET = "wallet_pending_open"
-        private const val DEFAULT_UNLOCK_MS = 120_000L
     }
 }

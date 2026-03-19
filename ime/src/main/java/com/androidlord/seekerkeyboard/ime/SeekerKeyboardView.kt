@@ -1169,9 +1169,9 @@ class SeekerKeyboardView(
     }
 
     private fun accentColor(theme: KeyboardTheme): String = when (theme) {
-        KeyboardTheme.SAND -> "#7C4DFF"
+        KeyboardTheme.SAND -> "#14F195"
         KeyboardTheme.TEAL -> "#14F195"
-        KeyboardTheme.GRAPHITE -> "#9945FF"
+        KeyboardTheme.GRAPHITE -> "#14F195"
     }
 
     private fun neutralKeyColor(theme: KeyboardTheme): String = when (theme) {
@@ -1271,17 +1271,17 @@ class SeekerKeyboardView(
     private fun metalKeyDrawable(settings: KeyboardSettings, label: String, radius: Int): GradientDrawable {
         val palette = when (settings.theme) {
             KeyboardTheme.SAND -> when (label) {
-                "wallet" -> listOf("#F09C54", "#A95F31", "#462718", "#FFD1AE")
+                "wallet" -> listOf("#6FFFD2", "#1BB98B", "#0A5A42", "#D3FFF1")
                 "enter", "shift", "123", "⌫" -> listOf("#D9B59A", "#8C674D", "#432D20", "#F2D9C6")
                 else -> listOf("#E6CEBE", "#A38779", "#5C473D", "#F6E4D9")
             }
             KeyboardTheme.TEAL -> when (label) {
-                "wallet" -> listOf("#4A3A75", "#2E2552", "#141A29", "#C5CEDB")
+                "wallet" -> listOf("#6FFFD2", "#12A97F", "#0A3D33", "#D3FFF1")
                 "enter", "shift", "123", "⌫" -> listOf("#778293", "#576170", "#2B3340", "#C5CEDB")
                 else -> listOf("#A6AFBC", "#687384", "#384250", "#C5CEDB")
             }
             KeyboardTheme.GRAPHITE -> when (label) {
-                "wallet" -> listOf("#5C5F82", "#3A3F62", "#181C2E", "#D4D8E6")
+                "wallet" -> listOf("#6FFFD2", "#16A77F", "#0B4B39", "#D3FFF1")
                 "enter", "shift", "123", "⌫" -> listOf("#9BA3AF", "#656D78", "#303741", "#D4D8E6")
                 else -> listOf("#C8CDD4", "#7B828C", "#434952", "#E2E5EB")
             }

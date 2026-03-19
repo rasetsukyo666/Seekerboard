@@ -4,7 +4,7 @@ import android.content.Context
 
 enum class KeyboardTheme(val label: String) {
     SAND("Sand"),
-    TEAL("Teal"),
+    TEAL("Original"),
     GRAPHITE("Graphite"),
 }
 

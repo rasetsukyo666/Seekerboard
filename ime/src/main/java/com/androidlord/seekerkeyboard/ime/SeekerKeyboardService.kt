@@ -54,10 +54,11 @@ class SeekerKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        if (walletAccessGuardStore.consumePendingOpenWallet() && walletAccessGuardStore.isUnlocked()) {
+        if (walletAccessGuardStore.consumePendingOpenWallet()) {
             walletDrawerTab = WalletDrawerTab.OVERVIEW
             activePanel = UtilityPanel.WALLET
             keyboardLayer = KeyboardLayer.ALPHA
+            walletAccessGuardStore.lock()
         }
         renderKeyboard()
     }
@@ -145,6 +146,7 @@ class SeekerKeyboardService : InputMethodService() {
         }
         if (activePanel == UtilityPanel.WALLET && key != "wallet") {
             activePanel = UtilityPanel.NONE
+            walletAccessGuardStore.lock()
             keyboardLayer = KeyboardLayer.ALPHA
         }
         when (key) {
@@ -287,6 +289,7 @@ class SeekerKeyboardService : InputMethodService() {
             }
             action.startsWith("action:pick_suggestion:") -> {
                 replaceCurrentWord(action.removePrefix("action:pick_suggestion:"))
+                currentInputConnection?.commitText(" ", 1)
                 suggestions = emptyList()
                 ephemeralHint = "suggestion applied"
             }
@@ -368,11 +371,20 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun togglePanel(panel: UtilityPanel) {
         if (panel == UtilityPanel.WALLET && activePanel != panel) {
-            if (!walletAccessGuardStore.isUnlocked()) {
-                launchWalletAccessGate()
-                ephemeralHint = "unlock wallet"
-                return
-            }
+            walletAccessGuardStore.lock()
+            launchWalletAccessGate()
+            ephemeralHint = "unlock wallet"
+            return
+        }
+        if (panel == UtilityPanel.WALLET && activePanel == panel) {
+            walletAccessGuardStore.lock()
+            activePanel = UtilityPanel.NONE
+            return
+        }
+        if (activePanel == UtilityPanel.WALLET && panel != UtilityPanel.WALLET) {
+            walletAccessGuardStore.lock()
+        }
+        if (panel == UtilityPanel.WALLET) {
             walletDrawerTab = WalletDrawerTab.OVERVIEW
             keyboardLayer = KeyboardLayer.ALPHA
         }
