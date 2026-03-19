@@ -27,27 +27,55 @@ enum class WalletDrawerTab {
     ACCOUNTS,
 }
 
+enum class KeyboardLayer {
+    ALPHA,
+    SYMBOLS,
+}
+
+enum class ShiftState {
+    OFF,
+    ONCE,
+    CAPS,
+}
+
 data class KeyboardPanelState(
     val activePanel: UtilityPanel = UtilityPanel.NONE,
     val walletTab: WalletDrawerTab = WalletDrawerTab.OVERVIEW,
     val walletSnapshot: WalletSessionSnapshot = WalletSessionSnapshot(),
     val clipboardPreview: String = "Clipboard empty",
     val clipboardRaw: String = "",
+    val clipboardHistory: List<String> = emptyList(),
     val drafts: WalletActionDrafts = WalletActionDrafts(),
     val selectedStakeIndex: Int = 0,
     val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
+    val keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA,
+    val shiftState: ShiftState = ShiftState.OFF,
 )
 
 class SeekerKeyboardView(
     context: Context,
 ) : LinearLayout(context) {
-    private val rowSpecs = listOf(
+    private val alphaRowSpecs = listOf(
         listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
         listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
         listOf("shift", "z", "x", "c", "v", "b", "n", "m", "⌫"),
     )
+    private val symbolRowSpecs = listOf(
+        listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+        listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
+        listOf("shift", "*", "'", ":", ";", "!", "?", "%", "⌫"),
+    )
+    private val longPressMap = mapOf(
+        "a" to "á",
+        "e" to "é",
+        "i" to "í",
+        "o" to "ó",
+        "u" to "ú",
+        "s" to "$",
+        "." to ",",
+        "," to ";",
+    )
 
-    private var uppercase = false
     private var cachedWallpaperUri: String? = null
     private var cachedWallpaper: BitmapDrawable? = null
 
@@ -70,20 +98,19 @@ class SeekerKeyboardView(
             addView(buildPanel(settings, panelState, onUtilityPress))
         }
 
-        if (settings.showNumberRow) {
-            addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, onKeyPress, onUtilityPress))
+        val rowSpecs = if (panelState.keyboardLayer == KeyboardLayer.SYMBOLS) symbolRowSpecs else alphaRowSpecs
+        if (settings.showNumberRow && panelState.keyboardLayer == KeyboardLayer.ALPHA) {
+            addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, panelState, onKeyPress, onUtilityPress))
         }
 
         rowSpecs.forEach { row ->
-            addView(buildRow(row, settings, onKeyPress, onUtilityPress))
+            addView(buildRow(row, settings, panelState, onKeyPress, onUtilityPress))
         }
 
         val bottomRow = mutableListOf("123", ",")
-        if (settings.showWalletKey) {
-            bottomRow += "wallet"
-        }
+        if (settings.showWalletKey) bottomRow += "wallet"
         bottomRow += listOf("space", ".", "enter")
-        addView(buildRow(bottomRow, settings, onKeyPress, onUtilityPress))
+        addView(buildRow(bottomRow, settings, panelState, onKeyPress, onUtilityPress))
     }
 
     fun clipboardPreviewFrom(label: CharSequence?, description: ClipDescription?): String {
@@ -145,7 +172,7 @@ class SeekerKeyboardView(
     ): View {
         val card = LinearLayout(context).apply {
             orientation = VERTICAL
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setPadding(dp(12), dp(10), dp(12), dp(12))
             setBackgroundColor(parseColorOrFallback(settings.panelHex, panelColor(settings.theme)))
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(8)
@@ -153,22 +180,15 @@ class SeekerKeyboardView(
         }
         when (panelState.activePanel) {
             UtilityPanel.WALLET -> renderWalletPanel(card, settings, panelState, onUtilityPress)
-            UtilityPanel.CLIPBOARD -> {
-                card.addView(panelTitle("Clipboard", settings))
-                card.addView(panelText(panelState.clipboardPreview, settings))
-                card.addView(panelActions(settings, listOf("paste", "clear"), onUtilityPress))
-            }
+            UtilityPanel.CLIPBOARD -> renderClipboardPanel(card, settings, panelState, onUtilityPress)
             UtilityPanel.THEME -> {
                 card.addView(panelTitle("Theme", settings))
-                card.addView(panelText("Theme: ${settings.theme.label}", settings))
-                card.addView(panelText("Height: ${settings.keyHeightDp}dp", settings))
-                card.addView(panelText("Wallpaper: ${if (settings.wallpaperUri.isBlank()) "none" else "custom"}", settings))
-                card.addView(panelText("Surface colors can be edited in settings with hex values.", settings))
+                card.addView(statusChip("theme ${settings.theme.label.lowercase()} · ${settings.keyHeightDp}dp", settings))
                 card.addView(panelActions(settings, listOf("cycle_theme", "height_up", "height_down", "toggle_number"), onUtilityPress))
             }
             UtilityPanel.SETTINGS -> {
                 card.addView(panelTitle("Settings", settings))
-                card.addView(panelText("Open the companion settings app for IME enablement and advanced theme/wallpaper options.", settings))
+                card.addView(statusChip("onboarding + advanced config", settings))
                 card.addView(panelActions(settings, listOf("open_settings", "switch_ime"), onUtilityPress))
             }
             UtilityPanel.NONE -> Unit
@@ -184,48 +204,59 @@ class SeekerKeyboardView(
     ) {
         card.addView(panelTitle("Wallet", settings))
         card.addView(panelActions(settings, listOf("wallet_overview", "wallet_stake", "wallet_accounts"), onUtilityPress))
-        card.addView(panelText(panelState.walletSnapshot.statusMessage, settings))
-        card.addView(panelText("Session: ${panelState.walletSnapshot.walletAddress?.let(::shortAddress) ?: "disconnected"}", settings))
-        card.addView(panelText("Cluster: ${panelState.walletSnapshot.clusterName.lowercase()}", settings))
-        card.addView(panelText(if (panelState.walletSnapshot.authTokenPresent) "Auth token cached" else "No cached session token", settings))
+        card.addView(statusChip(compactStatus(panelState.walletSnapshot.statusMessage), settings))
+        card.addView(panelMeta("session", panelState.walletSnapshot.walletAddress?.let(::shortAddress) ?: "disconnected", settings))
+        card.addView(panelMeta("cluster", panelState.walletSnapshot.clusterName.lowercase(), settings))
 
         when (panelState.walletTab) {
             WalletDrawerTab.OVERVIEW -> {
-                card.addView(panelText("Balance: ${panelState.walletSnapshot.totalBalanceUsd}", settings))
-                card.addView(panelText("SKR: ${panelState.walletSnapshot.skrApyLabel} · staked ${panelState.walletSnapshot.skrStakedAmount} · withdrawable ${panelState.walletSnapshot.skrWithdrawableAmount}", settings))
-                card.addView(panelText("Native stake accounts: ${panelState.walletSnapshot.nativeStakeAccountCount}", settings))
-                card.addView(panelText("Clipboard target: ${panelState.clipboardRaw.ifBlank { "copy a wallet address to use send" }.let { if (it.length > 20) shortAddress(it) else it }}", settings))
-                card.addView(panelText("Send preset: ${panelState.drafts.sendAmountSol} SOL", settings))
+                card.addView(panelMeta("balance", panelState.walletSnapshot.totalBalanceUsd, settings))
+                card.addView(panelMeta("skr", "${panelState.walletSnapshot.skrStakedAmount} staked · ${panelState.walletSnapshot.skrWithdrawableAmount} ready", settings))
+                card.addView(panelMeta("send", "${panelState.drafts.sendAmountSol} SOL -> ${panelState.clipboardRaw.ifBlank { "clipboard target" }.let { if (it.length > 18) shortAddress(it) else it }}", settings))
                 card.addView(panelActions(settings, listOf("connect", "refresh", "disconnect"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("send_down", "send_up", "send"), onUtilityPress))
             }
             WalletDrawerTab.STAKE -> {
                 val selectedStake = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
-                card.addView(panelText("Validator lane: Solana Mobile validator", settings))
-                card.addView(panelText("SKR stake preset: ${panelState.drafts.skrStakeAmount} SKR", settings))
-                card.addView(panelText("SKR unstake preset: ${panelState.drafts.skrUnstakeAmount} SKR", settings))
-                card.addView(panelText("SKR APY: ${panelState.walletSnapshot.skrApyLabel}", settings))
-                card.addView(panelText("SKR staked: ${panelState.walletSnapshot.skrStakedAmount}", settings))
-                card.addView(panelText("SKR withdrawable: ${panelState.walletSnapshot.skrWithdrawableAmount}", settings))
-                card.addView(panelText("Selected stake: ${selectedStake?.let { "${shortAddress(it.pubkey)} · ${formatLamports(it.lamports)} · ${it.stakeState}" } ?: "none"}", settings))
+                card.addView(panelMeta("validator", "Solana Mobile", settings))
+                card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${formatLamports(it.lamports)}" } ?: "none", settings))
+                card.addView(panelMeta("skr", "${panelState.drafts.skrStakeAmount} stake · ${panelState.drafts.skrUnstakeAmount} unstake", settings))
                 card.addView(panelActions(settings, listOf("skr_stake_down", "skr_stake_up", "skr_stake"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("skr_unstake_down", "skr_unstake_up", "skr_unstake"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("skr_withdraw", "stake_prev", "stake_next"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("native_delegate", "native_deactivate", "native_withdraw"), onUtilityPress))
             }
             WalletDrawerTab.ACCOUNTS -> {
-                card.addView(panelText("Eligible consolidation sources: ${panelState.walletSnapshot.eligibleConsolidationSources}", settings))
-                card.addView(panelText("Consolidation preview: ${panelState.consolidationFeeQuote.sourceCount} sources", settings))
-                card.addView(panelText("Fee carry: ${panelState.consolidationFeeQuote.perSourceFeeInSkr} SKR/source, cap ${panelState.consolidationFeeQuote.capInSkr} SKR", settings))
-                card.addView(panelText("Current consolidation fee: ${panelState.consolidationFeeQuote.feeInSkr} SKR", settings))
-                panelState.walletSnapshot.stakeAccountsPreview.take(5).forEachIndexed { index, stake ->
+                val selectedStake = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
+                card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${it.stakeState}" } ?: "none", settings))
+                card.addView(panelMeta("merge", "${panelState.consolidationFeeQuote.sourceCount} src · ${panelState.consolidationFeeQuote.feeInSkr} SKR carry", settings))
+                panelState.walletSnapshot.stakeAccountsPreview.take(4).forEachIndexed { index, stake ->
                     val prefix = if (index == panelState.selectedStakeIndex) ">" else "•"
-                    card.addView(panelText("$prefix ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)} · ${stake.stakeState}", settings))
+                    card.addView(panelText("$prefix ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)}", settings))
                 }
                 card.addView(panelActions(settings, listOf("stake_prev", "stake_next", "refresh"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("sources_down", "sources_up", "consolidate"), onUtilityPress))
             }
         }
+    }
+
+    private fun renderClipboardPanel(
+        card: LinearLayout,
+        settings: KeyboardSettings,
+        panelState: KeyboardPanelState,
+        onUtilityPress: (String) -> Unit,
+    ) {
+        card.addView(panelTitle("Clipboard", settings))
+        card.addView(statusChip(compactStatus(panelState.clipboardPreview), settings))
+        if (panelState.clipboardHistory.isEmpty()) {
+            card.addView(panelText("No history yet", settings))
+        } else {
+            panelState.clipboardHistory.take(4).forEachIndexed { index, item ->
+                card.addView(panelText("${index + 1}. ${item.take(36)}", settings))
+            }
+        }
+        card.addView(panelActions(settings, listOf("paste", "hist_1", "hist_2"), onUtilityPress))
+        card.addView(panelActions(settings, listOf("hist_3", "hist_4", "clear"), onUtilityPress))
     }
 
     private fun panelTitle(text: String, settings: KeyboardSettings): View {
@@ -234,6 +265,23 @@ class SeekerKeyboardView(
             textSize = 16f
             setTextColor(foregroundColor(settings))
         }
+    }
+
+    private fun statusChip(text: String, settings: KeyboardSettings): View {
+        return TextView(context).apply {
+            this.text = text
+            textSize = 12f
+            setTextColor(foregroundColor(settings))
+            setBackgroundColor(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)))
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            }
+        }
+    }
+
+    private fun panelMeta(label: String, value: String, settings: KeyboardSettings): View {
+        return panelText("$label: $value", settings)
     }
 
     private fun panelText(text: String, settings: KeyboardSettings): View {
@@ -278,6 +326,7 @@ class SeekerKeyboardView(
     private fun buildRow(
         labels: List<String>,
         settings: KeyboardSettings,
+        panelState: KeyboardPanelState,
         onKeyPress: (String) -> Unit,
         onUtilityPress: (String) -> Unit,
     ): View {
@@ -292,7 +341,7 @@ class SeekerKeyboardView(
         labels.forEach { label ->
             row.addView(
                 Button(context).apply {
-                    text = displayLabel(label)
+                    text = displayLabel(label, panelState)
                     isAllCaps = false
                     setTextColor(foregroundColor(settings))
                     setBackgroundColor(keyColor(settings, label))
@@ -304,11 +353,16 @@ class SeekerKeyboardView(
                         marginEnd = dp(3)
                     }
                     setOnClickListener {
-                        if (label == "shift") {
-                            uppercase = !uppercase
-                            onUtilityPress("action:redraw")
-                        } else {
-                            onKeyPress(resolveKeyValue(label))
+                        when (label) {
+                            "shift" -> onUtilityPress("action:cycle_shift")
+                            "123" -> onUtilityPress("action:toggle_symbols")
+                            else -> onKeyPress(resolveKeyValue(label, panelState))
+                        }
+                    }
+                    if (longPressMap.containsKey(label)) {
+                        setOnLongClickListener {
+                            onKeyPress(longPressMap.getValue(label))
+                            true
                         }
                     }
                 }
@@ -317,20 +371,31 @@ class SeekerKeyboardView(
         return row
     }
 
-    private fun displayLabel(label: String): String {
+    private fun displayLabel(label: String, panelState: KeyboardPanelState): String {
         return when (label) {
             "space" -> "space"
             "wallet" -> "wallet"
             "enter" -> "enter"
-            "shift" -> if (uppercase) "SHIFT" else "shift"
-            else -> resolveKeyValue(label)
+            "123" -> if (panelState.keyboardLayer == KeyboardLayer.SYMBOLS) "ABC" else "123"
+            "shift" -> when (panelState.shiftState) {
+                ShiftState.OFF -> "shift"
+                ShiftState.ONCE -> "Shift"
+                ShiftState.CAPS -> "CAPS"
+            }
+            else -> resolveKeyValue(label, panelState)
         }
     }
 
-    private fun resolveKeyValue(label: String): String {
+    private fun resolveKeyValue(label: String, panelState: KeyboardPanelState): String {
         return when (label) {
             "⌫", "shift", "space", "wallet", "enter", "123" -> label
-            else -> if (uppercase) label.uppercase() else label
+            else -> {
+                val shouldUppercase = panelState.keyboardLayer == KeyboardLayer.ALPHA &&
+                    panelState.shiftState != ShiftState.OFF &&
+                    label.length == 1 &&
+                    label[0].isLetter()
+                if (shouldUppercase) label.uppercase() else label
+            }
         }
     }
 
@@ -343,13 +408,15 @@ class SeekerKeyboardView(
         }
     }
 
+    private fun compactStatus(status: String): String {
+        return status.substringBefore(".").take(56).ifBlank { "ready" }
+    }
+
     private fun applyBackground(settings: KeyboardSettings) {
         val fallback = parseColorOrFallback(settings.backgroundHex, backgroundColor(settings.theme))
         setBackgroundColor(fallback)
         background = null
-
         if (settings.wallpaperUri.isBlank()) return
-
         if (cachedWallpaperUri != settings.wallpaperUri) {
             cachedWallpaperUri = settings.wallpaperUri
             cachedWallpaper = runCatching {
@@ -358,10 +425,9 @@ class SeekerKeyboardView(
                 }
             }.getOrNull()
         }
-
-        cachedWallpaper?.let { drawable ->
-            drawable.alpha = 92
-            background = drawable
+        cachedWallpaper?.let {
+            it.alpha = 92
+            background = it
         }
     }
 

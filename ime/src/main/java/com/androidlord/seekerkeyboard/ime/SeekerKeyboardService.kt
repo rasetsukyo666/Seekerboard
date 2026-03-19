@@ -16,17 +16,21 @@ import android.widget.FrameLayout
 class SeekerKeyboardService : InputMethodService() {
     private lateinit var settingsStore: KeyboardSettingsStore
     private lateinit var draftStore: WalletActionDraftStore
+    private lateinit var clipboardHistoryStore: ClipboardHistoryStore
     private lateinit var walletStore: WalletSessionSnapshotStore
     private lateinit var clipboardManager: ClipboardManager
     private lateinit var keyboardView: SeekerKeyboardView
     private var activePanel: UtilityPanel = UtilityPanel.NONE
     private var walletDrawerTab: WalletDrawerTab = WalletDrawerTab.OVERVIEW
     private var selectedStakeIndex: Int = 0
+    private var keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA
+    private var shiftState: ShiftState = ShiftState.OFF
 
     override fun onCreate() {
         super.onCreate()
         settingsStore = KeyboardSettingsStore(this)
         draftStore = WalletActionDraftStore(this)
+        clipboardHistoryStore = ClipboardHistoryStore(this)
         walletStore = WalletSessionSnapshotStore(this)
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
@@ -48,6 +52,7 @@ class SeekerKeyboardService : InputMethodService() {
         val walletSnapshot = walletStore.load()
         val clip = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)
         val clipRaw = clip?.toString().orEmpty()
+        clipboardHistoryStore.record(clip)
         selectedStakeIndex = selectedStakeIndex.coerceIn(0, (walletSnapshot.stakeAccountsPreview.size - 1).coerceAtLeast(0))
         val clipPreview = keyboardView.clipboardPreviewFrom(
             clip,
@@ -61,9 +66,12 @@ class SeekerKeyboardService : InputMethodService() {
                 walletSnapshot = walletSnapshot,
                 clipboardPreview = clipPreview,
                 clipboardRaw = clipRaw,
+                clipboardHistory = clipboardHistoryStore.load(),
                 drafts = draftStore.load(),
                 selectedStakeIndex = selectedStakeIndex,
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
+                keyboardLayer = keyboardLayer,
+                shiftState = shiftState,
             ),
             onKeyPress = ::handleKeyPress,
             onUtilityPress = ::handleUtilityPress,
@@ -81,9 +89,10 @@ class SeekerKeyboardService : InputMethodService() {
             "space" -> inputConnection.commitText(" ", 1)
             "enter" -> inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             "wallet" -> togglePanel(UtilityPanel.WALLET)
-            "123" -> inputConnection.commitText("123 ", 1)
-            "shift" -> Unit
             else -> inputConnection.commitText(key, 1)
+        }
+        if (key !in setOf("⌫", "space", "enter", "wallet") && shiftState == ShiftState.ONCE && keyboardLayer == KeyboardLayer.ALPHA) {
+            shiftState = ShiftState.OFF
         }
         renderKeyboard()
     }
@@ -125,10 +134,19 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:native_deactivate" -> launchStakeAction("native_deactivate")
             action == "action:native_withdraw" -> launchStakeAction("native_withdraw")
             action == "action:consolidate" -> launchStakeAction("consolidate")
+            action == "action:cycle_shift" -> cycleShiftState()
+            action == "action:toggle_symbols" -> toggleSymbols()
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
-            action == "action:clear" -> clipboardManager.setPrimaryClip(ClipData.newPlainText("", ""))
+            action == "action:hist_1" -> pasteHistory(0)
+            action == "action:hist_2" -> pasteHistory(1)
+            action == "action:hist_3" -> pasteHistory(2)
+            action == "action:hist_4" -> pasteHistory(3)
+            action == "action:clear" -> {
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("", ""))
+                clipboardHistoryStore.clear()
+            }
             action == "action:cycle_theme" -> cycleTheme()
             action == "action:redraw" -> Unit
             action == "action:sources_up" -> settingsStore.saveConsolidationSourceCountPreview(settingsStore.load().consolidationSourceCountPreview + 1)
@@ -138,6 +156,21 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:toggle_number" -> settingsStore.saveNumberRow(!settingsStore.load().showNumberRow)
         }
         renderKeyboard()
+    }
+
+    private fun cycleShiftState() {
+        shiftState = when (shiftState) {
+            ShiftState.OFF -> ShiftState.ONCE
+            ShiftState.ONCE -> ShiftState.CAPS
+            ShiftState.CAPS -> ShiftState.OFF
+        }
+    }
+
+    private fun toggleSymbols() {
+        keyboardLayer = if (keyboardLayer == KeyboardLayer.ALPHA) KeyboardLayer.SYMBOLS else KeyboardLayer.ALPHA
+        if (keyboardLayer == KeyboardLayer.SYMBOLS) {
+            shiftState = ShiftState.OFF
+        }
     }
 
     private fun moveSelectedStake(delta: Int) {
@@ -169,6 +202,11 @@ class SeekerKeyboardService : InputMethodService() {
     private fun pasteClipboard() {
         val clip = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this) ?: return
         currentInputConnection?.commitText(clip, 1)
+    }
+
+    private fun pasteHistory(index: Int) {
+        val item = clipboardHistoryStore.load().getOrNull(index) ?: return
+        currentInputConnection?.commitText(item, 1)
     }
 
     private fun launchSettingsApp(extraKey: String? = null, extraValue: String? = null) {
