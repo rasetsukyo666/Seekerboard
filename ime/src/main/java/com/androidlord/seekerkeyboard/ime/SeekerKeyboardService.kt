@@ -580,13 +580,26 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun currentSuggestions(settings: KeyboardSettings): List<String> {
         if (!settings.suggestionsEnabled) return emptyList()
-        val word = currentWordBeforeCursor()
-        return GlideTypingEngine.suggestCorrections(settings.language, word)
+        val (currentWord, previousWord) = currentWordContext()
+        return GlideTypingEngine.suggestCorrections(settings.language, currentWord, previousWord)
     }
 
     private fun currentWordBeforeCursor(): String {
         val before = currentInputConnection?.getTextBeforeCursor(64, 0)?.toString().orEmpty()
-        return before.takeLastWhile { !it.isWhitespace() && it.isLetter() }.lowercase(Locale.US)
+        return before.takeLastWhile { !it.isWhitespace() && (it.isLetter() || it == '\'') }.lowercase(Locale.US)
+    }
+
+    private fun currentWordContext(): Pair<String, String> {
+        val before = currentInputConnection?.getTextBeforeCursor(96, 0)?.toString().orEmpty()
+        val trimmedEnd = before.trimEnd()
+        val currentWord = trimmedEnd.takeLastWhile { !it.isWhitespace() && (it.isLetter() || it == '\'') }
+        val previousChunk = if (currentWord.isNotEmpty()) {
+            trimmedEnd.dropLast(currentWord.length).trimEnd()
+        } else {
+            trimmedEnd
+        }
+        val previousWord = previousChunk.takeLastWhile { !it.isWhitespace() && (it.isLetter() || it == '\'') }
+        return currentWord to previousWord
     }
 
     private fun maybeAutocorrectCurrentWord(settings: KeyboardSettings) {

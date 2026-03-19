@@ -79,6 +79,18 @@ class WalletBridgeActivity : ComponentActivity() {
     }
 
     private suspend fun handleConnect() {
+        val existingAddress = sessionStore.loadWalletAddress()
+        val existingAuthToken = sessionStore.loadAuthToken()
+        if (!existingAddress.isNullOrBlank() && !existingAuthToken.isNullOrBlank()) {
+            walletAdapter.authToken = existingAuthToken
+            refreshSnapshot(existingAddress, sessionStore.loadCluster())
+            walletAccessGuardStore.unlock()
+            walletAccessGuardStore.markPendingOpenWallet()
+            sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "connect")
+            sessionStore.saveKeyboardStatus("Wallet session active for ${shortAddress(existingAddress)}.")
+            return
+        }
+
         val sender = ActivityResultSender(this)
         when (val result = walletAdapter.connect(sender)) {
             is TransactionResult.Success -> {
@@ -89,7 +101,8 @@ class WalletBridgeActivity : ComponentActivity() {
                 refreshSnapshot(address, sessionStore.loadCluster())
                 sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "connect")
                 walletAccessGuardStore.unlock()
-                sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}. Wallet session stored.")
+                walletAccessGuardStore.markPendingOpenWallet()
+                sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}. Wallet session stored, return to keyboard.")
             }
             is TransactionResult.NoWalletFound -> sessionStore.saveKeyboardStatus("No MWA wallet found on this device.")
             is TransactionResult.Failure -> sessionStore.saveKeyboardStatus("Wallet connection failed: ${result.e.message}")
