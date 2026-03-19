@@ -1002,9 +1002,9 @@ class SeekerKeyboardView(
 
     private fun gradientDrawableForTheme(settings: KeyboardSettings): GradientDrawable {
         val colors = when (settings.theme) {
-            KeyboardTheme.SAND -> intArrayOf(Color.parseColor("#070B17"), Color.parseColor("#1A1040"), Color.parseColor("#0D3B3B"))
+            KeyboardTheme.SAND -> intArrayOf(Color.parseColor("#2B170C"), Color.parseColor("#6B3A1E"), Color.parseColor("#D98A3C"))
             KeyboardTheme.TEAL -> intArrayOf(Color.parseColor("#050816"), Color.parseColor("#15104A"), Color.parseColor("#063C37"))
-            KeyboardTheme.GRAPHITE -> intArrayOf(Color.parseColor("#090C12"), Color.parseColor("#25154A"), Color.parseColor("#06352F"))
+            KeyboardTheme.GRAPHITE -> intArrayOf(Color.parseColor("#05070B"), Color.parseColor("#1A202D"), Color.parseColor("#3A4658"))
         }
         return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
             gradientType = GradientDrawable.LINEAR_GRADIENT
@@ -1012,40 +1012,59 @@ class SeekerKeyboardView(
     }
 
     private fun metalDrawable(settings: KeyboardSettings, active: Boolean): GradientDrawable {
-        val top = if (active) Color.parseColor("#A0ABB9") else Color.parseColor("#8D97A6")
-        val middle = if (active) Color.parseColor("#57616F") else Color.parseColor("#4D5662")
-        val bottom = if (active) Color.parseColor("#262D39") else Color.parseColor("#232A34")
+        val (top, middle, bottom, stroke) = when (settings.theme) {
+            KeyboardTheme.SAND -> listOf(
+                if (active) "#F0C29A" else "#C99A73",
+                if (active) "#8F5A34" else "#71472A",
+                if (active) "#412519" else "#341D14",
+                "#FFD4AE",
+            )
+            KeyboardTheme.TEAL -> listOf(
+                if (active) "#A0ABB9" else "#8D97A6",
+                if (active) "#57616F" else "#4D5662",
+                if (active) "#262D39" else "#232A34",
+                "#B8C4D6",
+            )
+            KeyboardTheme.GRAPHITE -> listOf(
+                if (active) "#C1C8D2" else "#949CA8",
+                if (active) "#5A6370" else "#4E5662",
+                if (active) "#1B2028" else "#171C23",
+                "#D3D9E2",
+            )
+        }
         return GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(top, middle, bottom)
+            intArrayOf(Color.parseColor(top), Color.parseColor(middle), Color.parseColor(bottom))
         ).apply {
             cornerRadius = dpFloat(cornerRadius(settings, false))
-            setStroke(dp(1), Color.parseColor("#B8C4D6"))
+            setStroke(dp(1), Color.parseColor(stroke))
         }
     }
 
     private fun metalKeyDrawable(settings: KeyboardSettings, label: String, radius: Int): GradientDrawable {
-        val baseTop = when (label) {
-            "wallet" -> Color.parseColor("#4A3A75")
-            "enter", "shift", "123", "⌫" -> Color.parseColor("#778293")
-            else -> Color.parseColor("#A6AFBC")
-        }
-        val baseMid = when (label) {
-            "wallet" -> Color.parseColor("#2E2552")
-            "enter", "shift", "123", "⌫" -> Color.parseColor("#576170")
-            else -> Color.parseColor("#687384")
-        }
-        val baseBottom = when (label) {
-            "wallet" -> Color.parseColor("#141A29")
-            "enter", "shift", "123", "⌫" -> Color.parseColor("#2B3340")
-            else -> Color.parseColor("#384250")
+        val palette = when (settings.theme) {
+            KeyboardTheme.SAND -> when (label) {
+                "wallet" -> listOf("#F09C54", "#A95F31", "#462718", "#FFD1AE")
+                "enter", "shift", "123", "⌫" -> listOf("#D9B59A", "#8C674D", "#432D20", "#F2D9C6")
+                else -> listOf("#E6CEBE", "#A38779", "#5C473D", "#F6E4D9")
+            }
+            KeyboardTheme.TEAL -> when (label) {
+                "wallet" -> listOf("#4A3A75", "#2E2552", "#141A29", "#C5CEDB")
+                "enter", "shift", "123", "⌫" -> listOf("#778293", "#576170", "#2B3340", "#C5CEDB")
+                else -> listOf("#A6AFBC", "#687384", "#384250", "#C5CEDB")
+            }
+            KeyboardTheme.GRAPHITE -> when (label) {
+                "wallet" -> listOf("#5C5F82", "#3A3F62", "#181C2E", "#D4D8E6")
+                "enter", "shift", "123", "⌫" -> listOf("#9BA3AF", "#656D78", "#303741", "#D4D8E6")
+                else -> listOf("#C8CDD4", "#7B828C", "#434952", "#E2E5EB")
+            }
         }
         return GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(baseTop, baseMid, baseBottom)
+            intArrayOf(Color.parseColor(palette[0]), Color.parseColor(palette[1]), Color.parseColor(palette[2]))
         ).apply {
             cornerRadius = dpFloat(radius)
-            setStroke(dp(1), Color.parseColor("#C5CEDB"))
+            setStroke(dp(1), Color.parseColor(palette[3]))
         }
     }
 

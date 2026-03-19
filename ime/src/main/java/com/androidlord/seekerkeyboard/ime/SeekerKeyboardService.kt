@@ -129,7 +129,7 @@ class SeekerKeyboardService : InputMethodService() {
             vibrate()
         }
         when (key) {
-            "⌫" -> inputConnection.deleteSurroundingText(1, 0)
+            "⌫" -> deleteSelectionOrPreviousChar()
             "space" -> {
                 maybeAutocorrectCurrentWord(settings)
                 inputConnection.commitText(" ", 1)
@@ -281,7 +281,7 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:pin_2" -> pastePinned(1)
             action == "action:cursor_left" -> moveCursor(-1)
             action == "action:cursor_right" -> moveCursor(1)
-            action == "action:delete_char" -> currentInputConnection?.deleteSurroundingText(1, 0)
+            action == "action:delete_char" -> deleteSelectionOrPreviousChar()
             action == "action:delete_word" -> deletePreviousWord()
             action == "action:clear" -> {
                 clipboardManager.setPrimaryClip(ClipData.newPlainText("", ""))
@@ -400,6 +400,13 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun deletePreviousWord() {
         val inputConnection = currentInputConnection ?: return
+        val selected = inputConnection.getSelectedText(0)?.toString().orEmpty()
+        if (selected.isNotEmpty()) {
+            inputConnection.commitText("", 1)
+            ephemeralHint = "delete selection"
+            alternateOptions = emptyList()
+            return
+        }
         val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
         if (before.isBlank()) {
             inputConnection.deleteSurroundingText(1, 0)
@@ -413,6 +420,18 @@ class SeekerKeyboardService : InputMethodService() {
         val deleteCount = (wordLength + spacesLength).coerceAtLeast(1)
         inputConnection.deleteSurroundingText(deleteCount, 0)
         ephemeralHint = "delete word"
+        alternateOptions = emptyList()
+    }
+
+    private fun deleteSelectionOrPreviousChar() {
+        val inputConnection = currentInputConnection ?: return
+        val selected = inputConnection.getSelectedText(0)?.toString().orEmpty()
+        if (selected.isNotEmpty()) {
+            inputConnection.commitText("", 1)
+            ephemeralHint = "delete selection"
+        } else {
+            inputConnection.deleteSurroundingText(1, 0)
+        }
         alternateOptions = emptyList()
     }
 
