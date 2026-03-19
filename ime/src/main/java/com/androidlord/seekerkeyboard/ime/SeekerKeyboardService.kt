@@ -25,6 +25,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var selectedStakeIndex: Int = 0
     private var keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA
     private var shiftState: ShiftState = ShiftState.OFF
+    private var ephemeralHint: String = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -72,6 +73,7 @@ class SeekerKeyboardService : InputMethodService() {
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
                 keyboardLayer = keyboardLayer,
                 shiftState = shiftState,
+                ephemeralHint = ephemeralHint,
             ),
             onKeyPress = ::handleKeyPress,
             onUtilityPress = ::handleUtilityPress,
@@ -90,6 +92,9 @@ class SeekerKeyboardService : InputMethodService() {
             "enter" -> inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             "wallet" -> togglePanel(UtilityPanel.WALLET)
             else -> inputConnection.commitText(key, 1)
+        }
+        if (key == "space") {
+            ephemeralHint = ""
         }
         if (key !in setOf("⌫", "space", "enter", "wallet") && shiftState == ShiftState.ONCE && keyboardLayer == KeyboardLayer.ALPHA) {
             shiftState = ShiftState.OFF
@@ -136,6 +141,7 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:consolidate" -> launchStakeAction("consolidate")
             action == "action:cycle_shift" -> cycleShiftState()
             action == "action:toggle_symbols" -> toggleSymbols()
+            action.startsWith("action:hint:") -> ephemeralHint = action.removePrefix("action:hint:")
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
@@ -143,6 +149,10 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:hist_2" -> pasteHistory(1)
             action == "action:hist_3" -> pasteHistory(2)
             action == "action:hist_4" -> pasteHistory(3)
+            action == "action:cursor_left" -> moveCursor(-1)
+            action == "action:cursor_right" -> moveCursor(1)
+            action == "action:delete_char" -> currentInputConnection?.deleteSurroundingText(1, 0)
+            action == "action:delete_word" -> deletePreviousWord()
             action == "action:clear" -> {
                 clipboardManager.setPrimaryClip(ClipData.newPlainText("", ""))
                 clipboardHistoryStore.clear()
@@ -209,6 +219,31 @@ class SeekerKeyboardService : InputMethodService() {
     private fun pasteHistory(index: Int) {
         val item = clipboardHistoryStore.load().getOrNull(index) ?: return
         currentInputConnection?.commitText(item, 1)
+        ephemeralHint = "pasted history ${index + 1}"
+    }
+
+    private fun moveCursor(delta: Int) {
+        val inputConnection = currentInputConnection ?: return
+        val keyCode = if (delta < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+        inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+        inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+        ephemeralHint = if (delta < 0) "cursor left" else "cursor right"
+    }
+
+    private fun deletePreviousWord() {
+        val inputConnection = currentInputConnection ?: return
+        val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
+        if (before.isBlank()) {
+            inputConnection.deleteSurroundingText(1, 0)
+            ephemeralHint = "delete"
+            return
+        }
+        val trimmed = before.trimEnd()
+        val wordLength = trimmed.takeLastWhile { !it.isWhitespace() }.length
+        val spacesLength = before.length - trimmed.length
+        val deleteCount = (wordLength + spacesLength).coerceAtLeast(1)
+        inputConnection.deleteSurroundingText(deleteCount, 0)
+        ephemeralHint = "delete word"
     }
 
     private fun launchSettingsApp(extraKey: String? = null, extraValue: String? = null) {

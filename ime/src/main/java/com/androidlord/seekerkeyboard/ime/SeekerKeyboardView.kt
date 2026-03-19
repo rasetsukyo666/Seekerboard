@@ -4,14 +4,17 @@ import android.content.ClipDescription
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.Locale
+import kotlin.math.abs
 
 enum class UtilityPanel {
     NONE,
@@ -51,6 +54,7 @@ data class KeyboardPanelState(
     val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
     val keyboardLayer: KeyboardLayer = KeyboardLayer.ALPHA,
     val shiftState: ShiftState = ShiftState.OFF,
+    val ephemeralHint: String = "",
 )
 
 class SeekerKeyboardView(
@@ -71,23 +75,23 @@ class SeekerKeyboardView(
         listOf("£", "€", "¥", "^", "_", "=", "[", "]", "<", ">"),
         listOf("shift", "\\", "©", "®", "°", "…", "¿", "¡", "⌫"),
     )
-    private val longPressMap = mapOf(
-        "a" to "á",
-        "c" to "ç",
-        "e" to "é",
-        "i" to "í",
-        "o" to "ó",
-        "u" to "ú",
-        "n" to "ñ",
-        "y" to "ý",
-        "z" to "ž",
-        "l" to "ł",
-        "s" to "$",
-        "!" to "¡",
-        "?" to "¿",
-        "\"" to "'",
-        "." to ",",
-        "," to ";",
+    private val alternatesMap = mapOf(
+        "a" to listOf("á", "à", "ä", "â"),
+        "c" to listOf("ç", "ć"),
+        "e" to listOf("é", "è", "ë", "ê"),
+        "i" to listOf("í", "ì", "ï", "î"),
+        "l" to listOf("ł"),
+        "n" to listOf("ñ"),
+        "o" to listOf("ó", "ò", "ö", "ô"),
+        "s" to listOf("$", "ś"),
+        "u" to listOf("ú", "ù", "ü", "û"),
+        "y" to listOf("ý"),
+        "z" to listOf("ž", "ź"),
+        "." to listOf(",", "…"),
+        "," to listOf(";", ":"),
+        "!" to listOf("¡"),
+        "?" to listOf("¿"),
+        "\"" to listOf("'"),
     )
 
     private var cachedWallpaperUri: String? = null
@@ -107,6 +111,9 @@ class SeekerKeyboardView(
         removeAllViews()
         applyBackground(settings)
 
+        if (panelState.ephemeralHint.isNotBlank()) {
+            addView(buildHintStrip(panelState.ephemeralHint, settings))
+        }
         addView(buildUtilityStrip(settings, panelState.activePanel, onUtilityPress))
         if (panelState.activePanel != UtilityPanel.NONE) {
             addView(buildPanel(settings, panelState, onUtilityPress))
@@ -118,17 +125,17 @@ class SeekerKeyboardView(
             KeyboardLayer.MORE_SYMBOLS -> moreSymbolRowSpecs
         }
         if (settings.showNumberRow && panelState.keyboardLayer == KeyboardLayer.ALPHA) {
-            addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, panelState, onKeyPress, onUtilityPress))
+            addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, panelState, 0, onKeyPress, onUtilityPress))
         }
 
-        rowSpecs.forEach { row ->
-            addView(buildRow(row, settings, panelState, onKeyPress, onUtilityPress))
+        rowSpecs.forEachIndexed { index, row ->
+            addView(buildRow(row, settings, panelState, index, onKeyPress, onUtilityPress))
         }
 
         val bottomRow = mutableListOf("123", ",")
         if (settings.showWalletKey) bottomRow += "wallet"
         bottomRow += listOf("space", ".", "enter")
-        addView(buildRow(bottomRow, settings, panelState, onKeyPress, onUtilityPress))
+        addView(buildRow(bottomRow, settings, panelState, 3, onKeyPress, onUtilityPress))
     }
 
     fun clipboardPreviewFrom(label: CharSequence?, description: ClipDescription?): String {
@@ -139,6 +146,23 @@ class SeekerKeyboardView(
             else -> "content"
         }
         return "$type: ${label.take(48)}"
+    }
+
+    private fun buildHintStrip(text: String, settings: KeyboardSettings): View {
+        return TextView(context).apply {
+            this.text = text
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(foregroundColor(settings))
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = pillDrawable(
+                parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)),
+                dpFloat(12),
+            )
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(6)
+            }
+        }
     }
 
     private fun buildUtilityStrip(
@@ -169,11 +193,12 @@ class SeekerKeyboardView(
             text = label
             isAllCaps = false
             setTextColor(foregroundColor(settings))
-            setBackgroundColor(
+            background = pillDrawable(
                 parseColorOrFallback(
                     if (active) settings.accentHex else settings.utilityHex,
                     if (active) accentColor(settings.theme) else mutedUtilityColor(settings.theme)
-                )
+                ),
+                dpFloat(14),
             )
             layoutParams = LayoutParams(0, dp(36), 1f).apply {
                 marginStart = dp(3)
@@ -191,7 +216,10 @@ class SeekerKeyboardView(
         val card = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(12))
-            setBackgroundColor(parseColorOrFallback(settings.panelHex, panelColor(settings.theme)))
+            background = pillDrawable(
+                parseColorOrFallback(settings.panelHex, panelColor(settings.theme)),
+                dpFloat(18),
+            )
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(8)
             }
@@ -291,7 +319,10 @@ class SeekerKeyboardView(
             this.text = text
             textSize = 12f
             setTextColor(foregroundColor(settings))
-            setBackgroundColor(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)))
+            background = pillDrawable(
+                parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)),
+                dpFloat(12),
+            )
             setPadding(dp(8), dp(5), dp(8), dp(5))
             layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dp(8)
@@ -329,7 +360,10 @@ class SeekerKeyboardView(
                         text = action.replace('_', ' ')
                         isAllCaps = false
                         setTextColor(foregroundColor(settings))
-                        setBackgroundColor(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)))
+                        background = pillDrawable(
+                            parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)),
+                            dpFloat(12),
+                        )
                         textSize = 12f
                         layoutParams = LayoutParams(0, dp(34), 1f).apply {
                             marginStart = dp(3)
@@ -346,48 +380,96 @@ class SeekerKeyboardView(
         labels: List<String>,
         settings: KeyboardSettings,
         panelState: KeyboardPanelState,
+        rowIndex: Int,
         onKeyPress: (String) -> Unit,
         onUtilityPress: (String) -> Unit,
     ): View {
         val row = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER
+            setPadding(rowInset(rowIndex), 0, rowInset(rowIndex), 0)
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(6)
+                topMargin = if (rowIndex == 0) dp(4) else dp(6)
             }
         }
 
         labels.forEach { label ->
-            row.addView(
-                Button(context).apply {
-                    text = displayLabel(label, panelState)
-                    isAllCaps = false
-                    setTextColor(foregroundColor(settings))
-                    setBackgroundColor(keyColor(settings, label))
-                    textSize = 16f
-                    minHeight = 0
-                    minimumHeight = 0
-                    layoutParams = LayoutParams(0, dp(settings.keyHeightDp), keyWeight(label)).apply {
-                        marginStart = dp(3)
-                        marginEnd = dp(3)
-                    }
-                    setOnClickListener {
-                        when (label) {
-                            "shift" -> onUtilityPress("action:cycle_shift")
-                            "123" -> onUtilityPress("action:toggle_symbols")
-                            else -> onKeyPress(resolveKeyValue(label, panelState))
-                        }
-                    }
-                    if (longPressMap.containsKey(label)) {
-                        setOnLongClickListener {
-                            onKeyPress(longPressMap.getValue(label))
-                            true
-                        }
-                    }
-                }
-            )
+            row.addView(buildKey(label, settings, panelState, onKeyPress, onUtilityPress))
         }
         return row
+    }
+
+    private fun buildKey(
+        label: String,
+        settings: KeyboardSettings,
+        panelState: KeyboardPanelState,
+        onKeyPress: (String) -> Unit,
+        onUtilityPress: (String) -> Unit,
+    ): View {
+        return Button(context).apply {
+            text = displayLabel(label, panelState)
+            isAllCaps = false
+            setTextColor(foregroundColor(settings))
+            background = keyDrawable(settings, label)
+            textSize = if (label.length > 1) 13f else 16f
+            minHeight = 0
+            minimumHeight = 0
+            layoutParams = LayoutParams(0, dp(settings.keyHeightDp), keyWeight(label)).apply {
+                marginStart = dp(2)
+                marginEnd = dp(2)
+            }
+            setOnClickListener {
+                when (label) {
+                    "shift" -> onUtilityPress("action:cycle_shift")
+                    "123" -> onUtilityPress("action:toggle_symbols")
+                    else -> onKeyPress(resolveKeyValue(label, panelState))
+                }
+            }
+            alternatesMap[label]?.let { alternates ->
+                setOnLongClickListener {
+                    onKeyPress(alternates.first())
+                    onUtilityPress("action:hint:${label}->${alternates.joinToString(" ")}")
+                    true
+                }
+            }
+            if (label == "space" || label == "⌫") {
+                setOnTouchListener(spaceOrDeleteGestureListener(label, onUtilityPress))
+            }
+        }
+    }
+
+    private fun spaceOrDeleteGestureListener(
+        label: String,
+        onUtilityPress: (String) -> Unit,
+    ): OnTouchListener {
+        return object : OnTouchListener {
+            private var downX = 0f
+            private var consumed = false
+
+            override fun onTouch(v: View?, event: MotionEvent): Boolean {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = event.x
+                        consumed = false
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val deltaX = event.x - downX
+                        if (!consumed && abs(deltaX) > dp(28)) {
+                            consumed = true
+                            when (label) {
+                                "space" -> onUtilityPress(if (deltaX > 0) "action:cursor_right" else "action:cursor_left")
+                                "⌫" -> onUtilityPress(if (deltaX > 0) "action:delete_char" else "action:delete_word")
+                            }
+                            return true
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        if (consumed) return true
+                    }
+                }
+                return false
+            }
+        }
     }
 
     private fun displayLabel(label: String, panelState: KeyboardPanelState): String {
@@ -424,10 +506,18 @@ class SeekerKeyboardView(
 
     private fun keyWeight(label: String): Float {
         return when (label) {
-            "space" -> 4.2f
-            "wallet" -> 1.6f
-            "enter", "shift", "123", "⌫" -> 1.4f
+            "space" -> 4.6f
+            "wallet" -> 1.55f
+            "enter", "shift", "123", "⌫" -> 1.45f
             else -> 1f
+        }
+    }
+
+    private fun rowInset(rowIndex: Int): Int {
+        return when (rowIndex) {
+            1 -> dp(10)
+            2 -> dp(18)
+            else -> 0
         }
     }
 
@@ -483,6 +573,18 @@ class SeekerKeyboardView(
             KeyboardTheme.SAND -> "#F1E3D3"
             KeyboardTheme.TEAL -> "#D8F4EE"
             KeyboardTheme.GRAPHITE -> "#20272B"
+        }
+    }
+
+    private fun keyDrawable(settings: KeyboardSettings, label: String): GradientDrawable {
+        return pillDrawable(keyColor(settings, label), dpFloat(if (label == "space") 20 else 16))
+    }
+
+    private fun pillDrawable(color: Int, radius: Float): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(color)
         }
     }
 
@@ -566,5 +668,13 @@ class SeekerKeyboardView(
             value.toFloat(),
             resources.displayMetrics,
         ).toInt()
+    }
+
+    private fun dpFloat(value: Int): Float {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            value.toFloat(),
+            resources.displayMetrics,
+        )
     }
 }
