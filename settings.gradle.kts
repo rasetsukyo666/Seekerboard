@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SeekerWallet"
+rootProject.name = "SeekerKeyboard"
 include(":app")

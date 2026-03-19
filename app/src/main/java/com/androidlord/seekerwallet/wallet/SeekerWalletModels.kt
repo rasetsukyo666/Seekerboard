@@ -17,8 +17,8 @@ enum class SolanaCluster(
 }
 
 data class SeekerWalletUiState(
-    val profileName: String = "SeekerWallet",
-    val jurisdictionHint: String = "Seeker-first Solana wallet shell with keyboard launch hooks.",
+    val profileName: String = "SeekerKeyboard",
+    val jurisdictionHint: String = "Private keyboard + companion wallet flow for Seeker devices.",
     val riskBanner: String = "Keyboard access should launch review and signing, not silently sign inside the IME surface.",
     val cluster: SolanaCluster = SolanaCluster.DEVNET,
     val walletAddress: String? = null,
@@ -27,10 +27,10 @@ data class SeekerWalletUiState(
     val readyCashoutText: String = "Wallet launch rail ready",
     val receiveUri: String = "",
     val receiveAmountSol: String = "0.05",
-    val receiveMemo: String = "SeekerWallet receive request",
+    val receiveMemo: String = "SeekerKeyboard receive request",
     val draftRecipient: String = "",
     val draftAmountSol: String = "0.01",
-    val draftMemo: String = "SeekerWallet transfer",
+    val draftMemo: String = "SeekerKeyboard transfer",
     val skrStakeAmount: String = "1",
     val skrUnstakeAmount: String = "1",
     val isBusy: Boolean = false,

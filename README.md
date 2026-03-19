@@ -1,10 +1,10 @@
-# SeekerWallet
+# SeekerKeyboard
 
-Android-first Solana wallet starter aimed at a Seeker keyboard + companion-app flow.
+Android-first private keyboard + companion-app starter aimed at a Seeker keyboard wallet flow.
 
 ## Current scope
 
-- Compose Android app shell
+- Compose Android companion-app shell
 - Solana Mobile Wallet Adapter connect / disconnect
 - Sign In with Solana
 - Detached message signing
@@ -14,12 +14,12 @@ Android-first Solana wallet starter aimed at a Seeker keyboard + companion-app f
 - Native stake delegate / deactivate / withdraw transaction builders
 - Official SKR stake / unstake / withdraw transaction flow
 - Devnet airdrop helper for device QA
-- Product-facing UI for keyboard launcher direction, native stake management, and SKR actions
+- Product-facing UI for keyboard-launch flow, native stake management, and SKR actions
 
 ## Intended architecture
 
-- Keyboard/IME surface for quick wallet access
-- Companion app screen for transaction review and signing
+- Private keyboard/IME surface for quick wallet access
+- Companion app screen for transaction review, wallet connect, signing, and staking
 - Shared Solana module for:
   - wallet auth
   - portfolio reads
@@ -47,4 +47,4 @@ Build debug APK:
 1. Extract the transaction-building logic from the prior React Native app into Kotlin services.
 2. Validate the native stake instruction account metas against device wallet signing.
 3. Add stake-account creation flow for first-time native staking.
-4. Add a real IME launcher that deep-links into the companion review flow.
+4. Add the actual private IME service that deep-links into the companion review flow.

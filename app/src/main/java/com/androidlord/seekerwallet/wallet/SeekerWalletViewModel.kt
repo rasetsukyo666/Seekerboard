@@ -275,7 +275,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
             when (
                 val result = walletAdapter.signIn(
                     sender,
-                    SignInWithSolana.Payload("github.com", "Sign in to SeekerWallet"),
+                    SignInWithSolana.Payload("github.com", "Sign in to SeekerKeyboard"),
                 )
             ) {
                 is TransactionResult.Success -> {
@@ -309,7 +309,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
             val sender = ActivityResultSender(activity)
             when (val result = walletAdapter.transact(sender) { authResult ->
                 signMessagesDetached(
-                    arrayOf("SeekerWallet verification".toByteArray()),
+                    arrayOf("SeekerKeyboard verification".toByteArray()),
                     arrayOf(authResult.accounts.first().publicKey),
                 )
             }) {
@@ -535,7 +535,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
         if (address.isNullOrBlank()) return ""
         val params = buildList {
             amountSol.takeIf { it.toDoubleOrNull() != null }?.let { add("amount=$it") }
-            add("label=SeekerWallet")
+            add("label=SeekerKeyboard")
             memo.takeIf { it.isNotBlank() }?.let { add("message=${Uri.encode(it)}") }
         }
         return "solana:$address?${params.joinToString("&")}"
@@ -596,9 +596,9 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
     }
 
     private companion object {
-        const val IDENTITY_URI = "https://github.com/androidlord666/seekerwallet"
+        const val IDENTITY_URI = "https://github.com/androidlord666/seekerkeyboard"
         const val ICON_URI = "/favicon.ico"
-        const val IDENTITY_NAME = "SeekerWallet"
+        const val IDENTITY_NAME = "SeekerKeyboard"
         const val SOL_PRICE_HINT = 90.0
         const val SKR_DECIMALS = 6
         val TWO_DECIMAL = java.text.DecimalFormat("0.00", java.text.DecimalFormatSymbols(Locale.US))
