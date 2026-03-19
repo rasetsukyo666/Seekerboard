@@ -42,6 +42,7 @@ import com.androidlord.seekerwallet.theme.LocalSeekerPalette
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
+    requestedWalletAction: String? = null,
 ) {
     val context = LocalContext.current
     val version = remember { mutableIntStateOf(0) }
@@ -93,6 +94,16 @@ fun SettingsScreen(
         ) {
             item {
                 HeaderCard()
+            }
+            if (!requestedWalletAction.isNullOrBlank()) {
+                item {
+                    SettingsCard("Keyboard Action Request") {
+                        Text(
+                            "The keyboard requested `$requestedWalletAction`. This fallback exists until the full wallet flow is moved completely into the IME surface.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
             }
             item {
                 SettingsCard("Keyboard Enablement") {

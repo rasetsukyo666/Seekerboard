@@ -52,6 +52,7 @@ class SeekerKeyboardService : InputMethodService() {
                 activePanel = activePanel,
                 walletSnapshot = walletStore.load(),
                 clipboardPreview = clipPreview,
+                consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
             ),
             onKeyPress = ::handleKeyPress,
             onUtilityPress = ::handleUtilityPress,
@@ -89,12 +90,15 @@ class SeekerKeyboardService : InputMethodService() {
                 togglePanel(panel)
             }
             action == "action:connect" || action == "action:stake" || action == "action:accounts" || action == "action:send" -> launchSettingsApp()
+            action == "action:consolidate" -> launchSettingsApp("wallet_action", "consolidate")
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
             action == "action:clear" -> clipboardManager.setPrimaryClip(ClipData.newPlainText("", ""))
             action == "action:cycle_theme" -> cycleTheme()
             action == "action:redraw" -> Unit
+            action == "action:sources_up" -> settingsStore.saveConsolidationSourceCountPreview(settingsStore.load().consolidationSourceCountPreview + 1)
+            action == "action:sources_down" -> settingsStore.saveConsolidationSourceCountPreview(settingsStore.load().consolidationSourceCountPreview - 1)
             action == "action:height_up" -> settingsStore.saveKeyHeightDp(settingsStore.load().keyHeightDp + 4)
             action == "action:height_down" -> settingsStore.saveKeyHeightDp(settingsStore.load().keyHeightDp - 4)
             action == "action:toggle_number" -> settingsStore.saveNumberRow(!settingsStore.load().showNumberRow)
@@ -121,12 +125,15 @@ class SeekerKeyboardService : InputMethodService() {
         currentInputConnection?.commitText(clip, 1)
     }
 
-    private fun launchSettingsApp() {
+    private fun launchSettingsApp(extraKey: String? = null, extraValue: String? = null) {
         requestHideSelf(0)
         startActivity(
             Intent().apply {
                 setClassName(packageName, "com.androidlord.seekerwallet.MainActivity")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (extraKey != null && extraValue != null) {
+                    putExtra(extraKey, extraValue)
+                }
             }
         )
     }

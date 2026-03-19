@@ -6,6 +6,7 @@ data class WalletSessionSnapshot(
     val walletAddress: String? = null,
     val authTokenPresent: Boolean = false,
     val clusterName: String = "DEVNET",
+    val nativeStakeAccountCount: Int = 0,
 )
 
 class WalletSessionSnapshotStore(context: Context) {
@@ -16,6 +17,7 @@ class WalletSessionSnapshotStore(context: Context) {
             walletAddress = prefs.getString("wallet_address", null),
             authTokenPresent = !prefs.getString("auth_token", null).isNullOrBlank(),
             clusterName = prefs.getString("cluster", "DEVNET") ?: "DEVNET",
+            nativeStakeAccountCount = prefs.getInt("native_stake_account_count", 0),
         )
     }
 }

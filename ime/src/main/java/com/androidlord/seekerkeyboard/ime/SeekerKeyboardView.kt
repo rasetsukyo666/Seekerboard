@@ -22,6 +22,7 @@ data class KeyboardPanelState(
     val activePanel: UtilityPanel = UtilityPanel.NONE,
     val walletSnapshot: WalletSessionSnapshot = WalletSessionSnapshot(),
     val clipboardPreview: String = "Clipboard empty",
+    val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
 )
 
 class SeekerKeyboardView(
@@ -130,7 +131,12 @@ class SeekerKeyboardView(
                 card.addView(panelText("Session: ${panelState.walletSnapshot.walletAddress?.let(::shortAddress) ?: "disconnected"}"))
                 card.addView(panelText("Cluster: ${panelState.walletSnapshot.clusterName.lowercase()}"))
                 card.addView(panelText(if (panelState.walletSnapshot.authTokenPresent) "Auth token cached" else "No cached session token"))
+                card.addView(panelText("Native stake accounts: ${panelState.walletSnapshot.nativeStakeAccountCount}"))
+                card.addView(panelText("Consolidation preview: ${panelState.consolidationFeeQuote.sourceCount} sources"))
+                card.addView(panelText("Fee carry: ${panelState.consolidationFeeQuote.perSourceFeeInSkr} SKR/source, cap ${panelState.consolidationFeeQuote.capInSkr} SKR"))
+                card.addView(panelText("Current consolidation fee: ${panelState.consolidationFeeQuote.feeInSkr} SKR"))
                 card.addView(panelActions(settings, listOf("connect", "stake", "accounts", "send"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("sources_down", "sources_up", "consolidate"), onUtilityPress))
             }
             UtilityPanel.CLIPBOARD -> {
                 card.addView(panelTitle("Clipboard"))

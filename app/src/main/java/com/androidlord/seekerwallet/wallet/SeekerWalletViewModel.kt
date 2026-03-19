@@ -292,6 +292,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                         statusMessage = "Portfolio synced from ${it.cluster.label}.",
                     )
                 }
+                sessionStore.saveNativeStakeAccountCount(bundle.stakeAccounts.size)
             }.onFailure { error ->
                 failAction("Refresh failed: ${error.message}")
                 _state.update { it.copy(isRefreshing = false) }

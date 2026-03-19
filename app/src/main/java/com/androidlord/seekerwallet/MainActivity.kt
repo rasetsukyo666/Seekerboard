@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.androidlord.seekerwallet.theme.SeekerTheme
 import com.androidlord.seekerwallet.theme.ThemePreset
 
@@ -12,8 +14,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val requestedWalletAction by remember {
+                androidx.compose.runtime.mutableStateOf(intent?.getStringExtra("wallet_action"))
+            }
             SeekerTheme(themePreset = ThemePreset.SAND) {
-                SettingsScreen()
+                SettingsScreen(requestedWalletAction = requestedWalletAction)
             }
         }
     }

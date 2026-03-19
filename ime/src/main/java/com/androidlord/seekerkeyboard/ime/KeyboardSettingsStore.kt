@@ -14,6 +14,7 @@ data class KeyboardSettings(
     val showWalletKey: Boolean = true,
     val keyHeightDp: Int = 52,
     val hapticsEnabled: Boolean = false,
+    val consolidationSourceCountPreview: Int = 1,
 )
 
 class KeyboardSettingsStore(context: Context) {
@@ -28,6 +29,7 @@ class KeyboardSettingsStore(context: Context) {
             showWalletKey = prefs.getBoolean(KEY_WALLET_KEY, true),
             keyHeightDp = prefs.getInt(KEY_KEY_HEIGHT, 52).coerceIn(40, 76),
             hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, false),
+            consolidationSourceCountPreview = prefs.getInt(KEY_CONSOLIDATION_SOURCES, 1).coerceIn(1, 99),
         )
     }
 
@@ -51,6 +53,10 @@ class KeyboardSettingsStore(context: Context) {
         prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
     }
 
+    fun saveConsolidationSourceCountPreview(value: Int) {
+        prefs.edit().putInt(KEY_CONSOLIDATION_SOURCES, value.coerceIn(1, 99)).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "seeker_keyboard_settings"
         private const val KEY_THEME = "theme"
@@ -58,5 +64,6 @@ class KeyboardSettingsStore(context: Context) {
         private const val KEY_WALLET_KEY = "wallet_key"
         private const val KEY_KEY_HEIGHT = "key_height"
         private const val KEY_HAPTICS = "haptics"
+        private const val KEY_CONSOLIDATION_SOURCES = "consolidation_sources"
     }
 }

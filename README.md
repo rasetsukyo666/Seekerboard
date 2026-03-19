@@ -7,6 +7,7 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 - Compose Android settings/onboarding app
 - Android IME module with a private keyboard service scaffold
 - Keyboard utility strip with wallet, clipboard, theme, and settings drawers
+- Consolidation fee preview carried into the keyboard wallet drawer
 - Solana Mobile Wallet Adapter connect / disconnect
 - Sign In with Solana
 - Detached message signing
@@ -27,6 +28,7 @@ Android-first private keyboard + companion-app starter aimed at a Seeker keyboar
 
 - `:app` settings/onboarding app only
 - `:ime` private keyboard service with wallet, clipboard, theme, and settings utility drawers
+- consolidation fee model currently carried as `10 SKR/source` with a `100 SKR` cap in the keyboard wallet drawer
 
 ## Build
 

@@ -35,12 +35,18 @@ class WalletSessionStore(context: Context) {
         prefs.edit()
             .remove(KEY_AUTH_TOKEN)
             .remove(KEY_WALLET_ADDRESS)
+            .remove(KEY_NATIVE_STAKE_ACCOUNT_COUNT)
             .apply()
+    }
+
+    fun saveNativeStakeAccountCount(count: Int) {
+        prefs.edit().putInt(KEY_NATIVE_STAKE_ACCOUNT_COUNT, count.coerceAtLeast(0)).apply()
     }
 
     private companion object {
         const val KEY_AUTH_TOKEN = "auth_token"
         const val KEY_WALLET_ADDRESS = "wallet_address"
         const val KEY_CLUSTER = "cluster"
+        const val KEY_NATIVE_STAKE_ACCOUNT_COUNT = "native_stake_account_count"
     }
 }
