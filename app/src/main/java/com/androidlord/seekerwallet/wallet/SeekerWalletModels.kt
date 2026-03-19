@@ -31,9 +31,13 @@ data class SeekerWalletUiState(
     val draftRecipient: String = "",
     val draftAmountSol: String = "0.01",
     val draftMemo: String = "SeekerWallet transfer",
+    val skrStakeAmount: String = "1",
+    val skrUnstakeAmount: String = "1",
     val isBusy: Boolean = false,
     val isRefreshing: Boolean = false,
     val assets: List<WalletAsset> = defaultAssets(),
+    val stakeAccounts: List<NativeStakeAccount> = emptyList(),
+    val skrPosition: SkrPosition = SkrPosition(),
     val rails: List<SupportRail> = defaultRails(),
     val checklist: List<SeekerChecklistItem> = defaultChecklist(),
     val contacts: List<RecoveryContact> = defaultContacts(),
@@ -53,6 +57,26 @@ data class SupportRail(
     val title: String,
     val description: String,
     val tag: String,
+)
+
+data class NativeStakeAccount(
+    val pubkey: String,
+    val lamports: Long,
+    val stakeState: String = "unknown",
+    val delegationVote: String? = null,
+    val activationEpoch: String? = null,
+    val deactivationEpoch: String? = null,
+    val canStake: Boolean = false,
+    val canWithdraw: Boolean = false,
+)
+
+data class SkrPosition(
+    val apyLabel: String = "APY syncing",
+    val stakedAmount: String = "0",
+    val unstakingAmount: String = "0",
+    val withdrawableAmount: String = "0",
+    val availableBalance: String = "0",
+    val lastFeeLabel: String = "",
 )
 
 data class SeekerChecklistItem(
@@ -100,7 +124,7 @@ private fun defaultRails(): List<SupportRail> {
         ),
         SupportRail(
             title = "Stake and unstake flow",
-            description = "Split native SOL staking and official SKR staking into explicit confirmation steps.",
+            description = "Manage native stake accounts and route official SKR stake, unstake, and withdraw transactions through wallet review.",
             tag = "Staking",
         )
     )
@@ -124,6 +148,14 @@ private fun defaultChecklist(): List<SeekerChecklistItem> {
             complete = false,
         )
     )
+}
+
+fun formatLamportsAsSol(lamports: Long): String {
+    return String.format(java.util.Locale.US, "%.4f SOL", lamports / 1_000_000_000.0)
+}
+
+fun isStakeInactive(account: NativeStakeAccount): Boolean {
+    return account.stakeState == "inactive" || account.stakeState == "undelegated" || account.stakeState == "initialized"
 }
 
 private fun defaultContacts(): List<RecoveryContact> {

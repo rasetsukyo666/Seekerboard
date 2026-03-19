@@ -10,8 +10,11 @@ Android-first Solana wallet starter aimed at a Seeker keyboard + companion-app f
 - Detached message signing
 - SOL balance and SPL token reads over JSON-RPC
 - Native SOL transfer signing through the connected wallet
+- Native stake account reads over JSON-RPC
+- Native stake delegate / deactivate / withdraw transaction builders
+- Official SKR stake / unstake / withdraw transaction flow
 - Devnet airdrop helper for device QA
-- Product-facing UI cards for keyboard launcher, staking extraction, and SKR fee lane planning
+- Product-facing UI for keyboard launcher direction, native stake management, and SKR actions
 
 ## Intended architecture
 
@@ -42,6 +45,6 @@ Build debug APK:
 ## Next steps
 
 1. Extract the transaction-building logic from the prior React Native app into Kotlin services.
-2. Add native SOL stake account reads and stake / deactivate / withdraw flows.
-3. Port SKR official API calls and unsigned transaction decoding.
+2. Validate the native stake instruction account metas against device wallet signing.
+3. Add stake-account creation flow for first-time native staking.
 4. Add a real IME launcher that deep-links into the companion review flow.

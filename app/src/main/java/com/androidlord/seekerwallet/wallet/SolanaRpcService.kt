@@ -90,6 +90,104 @@ class SolanaRpcService {
             .getString("blockhash")
     }
 
+    suspend fun fetchStakeAccounts(
+        rpcUrl: String,
+        ownerAddress: String,
+    ): List<NativeStakeAccount> = withContext(Dispatchers.IO) {
+        val stakerAccounts = post(
+            rpcUrl = rpcUrl,
+            method = "getParsedProgramAccounts",
+            params = JSONArray()
+                .put(STAKE_PROGRAM_ID)
+                .put(
+                    JSONObject()
+                        .put("commitment", "confirmed")
+                        .put(
+                            "filters",
+                            JSONArray().put(
+                                JSONObject().put(
+                                    "memcmp",
+                                    JSONObject()
+                                        .put("offset", AUTH_STAKER_OFFSET)
+                                        .put("bytes", ownerAddress),
+                                )
+                            )
+                        )
+                ),
+        ).getJSONObject("result").getJSONArray("value")
+
+        val withdrawerAccounts = post(
+            rpcUrl = rpcUrl,
+            method = "getParsedProgramAccounts",
+            params = JSONArray()
+                .put(STAKE_PROGRAM_ID)
+                .put(
+                    JSONObject()
+                        .put("commitment", "confirmed")
+                        .put(
+                            "filters",
+                            JSONArray().put(
+                                JSONObject().put(
+                                    "memcmp",
+                                    JSONObject()
+                                        .put("offset", AUTH_WITHDRAWER_OFFSET)
+                                        .put("bytes", ownerAddress),
+                                )
+                            )
+                        )
+                ),
+        ).getJSONObject("result").getJSONArray("value")
+
+        val merged = linkedMapOf<String, NativeStakeAccount>()
+        mergeStakeAccounts(merged, stakerAccounts, canStake = true, canWithdraw = false)
+        mergeStakeAccounts(merged, withdrawerAccounts, canStake = false, canWithdraw = true)
+        merged.values.toList()
+    }
+
+    private fun mergeStakeAccounts(
+        sink: MutableMap<String, NativeStakeAccount>,
+        source: JSONArray,
+        canStake: Boolean,
+        canWithdraw: Boolean,
+    ) {
+        for (index in 0 until source.length()) {
+            val item = source.getJSONObject(index)
+            val pubkey = item.getString("pubkey")
+            val account = item.getJSONObject("account")
+            val parsed = account
+                .getJSONObject("data")
+                .optJSONObject("parsed")
+            val info = parsed?.optJSONObject("info")
+            val stake = info?.optJSONObject("stake")
+            val delegation = stake?.optJSONObject("delegation")
+            val state = parsed?.optString("type").orEmpty().ifBlank { "unknown" }
+            val incoming = NativeStakeAccount(
+                pubkey = pubkey,
+                lamports = account.optLong("lamports"),
+                stakeState = state,
+                delegationVote = delegation?.optString("voter"),
+                activationEpoch = delegation?.opt("activationEpoch")?.toString(),
+                deactivationEpoch = delegation?.opt("deactivationEpoch")?.toString(),
+                canStake = canStake,
+                canWithdraw = canWithdraw,
+            )
+            val existing = sink[pubkey]
+            sink[pubkey] = if (existing == null) {
+                incoming
+            } else {
+                existing.copy(
+                    lamports = maxOf(existing.lamports, incoming.lamports),
+                    stakeState = if (incoming.stakeState != "unknown") incoming.stakeState else existing.stakeState,
+                    delegationVote = incoming.delegationVote ?: existing.delegationVote,
+                    activationEpoch = incoming.activationEpoch ?: existing.activationEpoch,
+                    deactivationEpoch = incoming.deactivationEpoch ?: existing.deactivationEpoch,
+                    canStake = existing.canStake || incoming.canStake,
+                    canWithdraw = existing.canWithdraw || incoming.canWithdraw,
+                )
+            }
+        }
+    }
+
     private fun post(
         rpcUrl: String,
         method: String,
@@ -134,6 +232,9 @@ class SolanaRpcService {
 
     private companion object {
         const val TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        const val STAKE_PROGRAM_ID = "Stake11111111111111111111111111111111111111"
+        const val AUTH_STAKER_OFFSET = 12
+        const val AUTH_WITHDRAWER_OFFSET = 44
         const val LAMPORTS_PER_SOL = 1_000_000_000L
     }
 }

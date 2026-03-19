@@ -16,21 +16,26 @@ import com.solana.publickey.SolanaPublicKey
 import com.solana.transaction.Message
 import com.solana.transaction.SystemProgram
 import com.solana.transaction.Transaction
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Base64
 import java.util.Locale
 
 class SeekerWalletViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionStore = WalletSessionStore(application)
     private val rpcService = SolanaRpcService()
+    private val nativeStakeService = NativeStakeService()
+    private val skrOfficialService = SkrOfficialService()
     private val walletAdapter = MobileWalletAdapter(
         connectionIdentity = ConnectionIdentity(
-            identityUri = Uri.parse("https://github.com/androidlord666/Matsukaze"),
-            iconUri = Uri.parse("/favicon.ico"),
-            identityName = "SeekerWallet",
+            identityUri = Uri.parse(IDENTITY_URI),
+            iconUri = Uri.parse(ICON_URI),
+            identityName = IDENTITY_NAME,
         )
     ).apply {
         authToken = sessionStore.loadAuthToken()
@@ -98,6 +103,14 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
         _state.update { it.copy(draftMemo = value) }
     }
 
+    fun updateSkrStakeAmount(value: String) {
+        _state.update { it.copy(skrStakeAmount = value) }
+    }
+
+    fun updateSkrUnstakeAmount(value: String) {
+        _state.update { it.copy(skrUnstakeAmount = value) }
+    }
+
     fun updateCluster(cluster: SolanaCluster) {
         sessionStore.saveCluster(cluster)
         _state.update {
@@ -141,9 +154,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                         )
                     }
                 }
-                is TransactionResult.Failure -> {
-                    failAction("Wallet connection failed: ${result.e.message}")
-                }
+                is TransactionResult.Failure -> failAction("Wallet connection failed: ${result.e.message}")
             }
         }
     }
@@ -152,29 +163,17 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
         runWalletAction("Disconnecting wallet…") {
             val sender = ActivityResultSender(activity)
             when (val result = walletAdapter.disconnect(sender)) {
-                is TransactionResult.Success -> {
+                is TransactionResult.Success, is TransactionResult.NoWalletFound -> {
                     sessionStore.clearSession()
                     walletAdapter.authToken = null
                     val cluster = state.value.cluster
                     _state.value = SeekerWalletUiState(
                         cluster = cluster,
-                        statusMessage = "Wallet disconnected.",
+                        statusMessage = if (result is TransactionResult.Success) "Wallet disconnected." else "Wallet session cleared.",
                     )
                     sessionStore.saveCluster(cluster)
                 }
-                is TransactionResult.NoWalletFound -> {
-                    sessionStore.clearSession()
-                    walletAdapter.authToken = null
-                    val cluster = state.value.cluster
-                    _state.value = SeekerWalletUiState(
-                        cluster = cluster,
-                        statusMessage = "Wallet session cleared.",
-                    )
-                    sessionStore.saveCluster(cluster)
-                }
-                is TransactionResult.Failure -> {
-                    failAction("Disconnect failed: ${result.e.message}")
-                }
+                is TransactionResult.Failure -> failAction("Disconnect failed: ${result.e.message}")
             }
         }
     }
@@ -189,22 +188,42 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                 )
             }
             runCatching {
-                rpcService.loadPortfolio(
-                    rpcUrl = state.value.cluster.rpcUrl,
-                    ownerAddress = address,
-                )
-            }.onSuccess { snapshot ->
-                val solUsd = snapshot.solBalance * SOL_PRICE_HINT
-                val tokenAssets = snapshot.tokenHoldings.take(6).map { holding ->
+                coroutineScope {
+                    val portfolioDeferred = async {
+                        rpcService.loadPortfolio(
+                            rpcUrl = state.value.cluster.rpcUrl,
+                            ownerAddress = address,
+                        )
+                    }
+                    val stakeDeferred = async {
+                        runCatching {
+                            rpcService.fetchStakeAccounts(
+                                rpcUrl = state.value.cluster.rpcUrl,
+                                ownerAddress = address,
+                            )
+                        }.getOrDefault(emptyList())
+                    }
+                    val skrDeferred = async {
+                        runCatching { skrOfficialService.fetchUserStake(address) }.getOrNull()
+                    }
+                    val apyDeferred = async {
+                        runCatching { skrOfficialService.fetchCurrentApy() }.getOrNull()
+                    }
+                    PortfolioBundle(
+                        portfolio = portfolioDeferred.await(),
+                        stakeAccounts = stakeDeferred.await(),
+                        skrState = skrDeferred.await(),
+                        skrApy = apyDeferred.await(),
+                    )
+                }
+            }.onSuccess { bundle ->
+                val solUsd = bundle.portfolio.solBalance * SOL_PRICE_HINT
+                val tokenAssets = bundle.portfolio.tokenHoldings.take(6).map { holding ->
                     WalletAsset(
                         symbol = holding.symbol,
                         name = if (holding.symbol == "USDC") "Stablecoin balance" else holding.mint,
                         balance = "${holding.amount} ${holding.symbol}",
-                        fiatValue = if (holding.symbol == "USDC") {
-                            "$${holding.amount}"
-                        } else {
-                            "SPL token"
-                        },
+                        fiatValue = if (holding.symbol == "USDC") "$${holding.amount}" else "SPL token",
                         accent = if (holding.symbol == "USDC") ColorPalette.USDC else ColorPalette.ACCENT,
                     )
                 }
@@ -212,16 +231,16 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                     it.copy(
                         isRefreshing = false,
                         totalBalanceUsd = "$" + TWO_DECIMAL.format(solUsd),
-                        readyCashoutText = if (snapshot.tokenHoldings.isEmpty()) {
+                        readyCashoutText = if (bundle.portfolio.tokenHoldings.isEmpty()) {
                             "SOL ready on ${it.cluster.label}"
                         } else {
-                            "${snapshot.tokenHoldings.size} token account(s) loaded"
+                            "${bundle.portfolio.tokenHoldings.size} token account(s) loaded"
                         },
                         assets = listOf(
                             WalletAsset(
                                 symbol = "SOL",
                                 name = "Wallet base layer",
-                                balance = "${SIX_DECIMAL.format(snapshot.solBalance)} SOL",
+                                balance = "${SIX_DECIMAL.format(bundle.portfolio.solBalance)} SOL",
                                 fiatValue = "$" + TWO_DECIMAL.format(solUsd),
                                 accent = ColorPalette.ACCENT,
                             )
@@ -238,6 +257,8 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                         } else {
                             tokenAssets
                         },
+                        stakeAccounts = bundle.stakeAccounts.sortedByDescending { account -> account.lamports },
+                        skrPosition = buildSkrPosition(bundle.skrState, bundle.skrApy),
                         statusMessage = "Portfolio synced from ${it.cluster.label}.",
                     )
                 }
@@ -251,10 +272,12 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
     fun signIn(activity: ComponentActivity) {
         runWalletAction("Signing in with Solana…") {
             val sender = ActivityResultSender(activity)
-            when (val result = walletAdapter.signIn(
-                sender,
-                SignInWithSolana.Payload("github.com", "Sign in to SeekerWallet"),
-            )) {
+            when (
+                val result = walletAdapter.signIn(
+                    sender,
+                    SignInWithSolana.Payload("github.com", "Sign in to SeekerWallet"),
+                )
+            ) {
                 is TransactionResult.Success -> {
                     val address = Base58.encodeToString(result.authResult.accounts.first().publicKey)
                     persistSession(address, result.authResult.authToken)
@@ -273,13 +296,9 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                     }
                 }
                 is TransactionResult.NoWalletFound -> {
-                    _state.update {
-                        it.copy(isBusy = false, statusMessage = "No compatible wallet app found for SIWS.")
-                    }
+                    _state.update { it.copy(isBusy = false, statusMessage = "No compatible wallet app found for SIWS.") }
                 }
-                is TransactionResult.Failure -> {
-                    failAction("Sign-in failed: ${result.e.message}")
-                }
+                is TransactionResult.Failure -> failAction("Sign-in failed: ${result.e.message}")
             }
         }
     }
@@ -295,12 +314,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                 )
             }) {
                 is TransactionResult.Success -> {
-                    val signature = result.successPayload
-                        ?.messages
-                        ?.firstOrNull()
-                        ?.signatures
-                        ?.firstOrNull()
-                        ?.let { Base58.encodeToString(it) }
+                    val signature = result.successPayload?.messages?.firstOrNull()?.signatures?.firstOrNull()?.let(Base58::encodeToString)
                     _state.update {
                         it.copy(
                             isBusy = false,
@@ -312,9 +326,7 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
                 is TransactionResult.NoWalletFound -> {
                     _state.update { it.copy(isBusy = false, statusMessage = "No compatible wallet app found.") }
                 }
-                is TransactionResult.Failure -> {
-                    failAction("Message signing failed: ${result.e.message}")
-                }
+                is TransactionResult.Failure -> failAction("Message signing failed: ${result.e.message}")
             }
         }
     }
@@ -349,54 +361,159 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun sendTransfer(activity: ComponentActivity) {
-        val draft = state.value
-        val senderAddress = draft.walletAddress ?: return
-        val recipient = draft.draftRecipient.trim()
-        val amountLamports = draft.draftAmountSol.toDoubleOrNull()
-            ?.times(1_000_000_000.0)
-            ?.toLong()
-            ?: 0L
+        val senderAddress = state.value.walletAddress ?: return
+        val recipient = state.value.draftRecipient.trim()
+        val amountLamports = state.value.draftAmountSol.toDoubleOrNull()?.times(1_000_000_000.0)?.toLong() ?: 0L
         if (recipient.isBlank() || amountLamports <= 0L) {
             _state.update { it.copy(statusMessage = "Enter a valid recipient and SOL amount before sending.") }
             return
         }
-
         runWalletAction("Preparing signed SOL transfer…") {
-            val sender = ActivityResultSender(activity)
-            val blockhash = rpcService.getLatestBlockhash(state.value.cluster.rpcUrl)
-            when (val result = walletAdapter.transact(sender) { authResult ->
-                val userAddress = SolanaPublicKey(authResult.accounts.first().publicKey)
-                val transferTx = Transaction(
-                    Message.Builder()
-                        .addInstruction(
-                            SystemProgram.transfer(
-                                userAddress,
-                                SolanaPublicKey(recipient),
-                                amountLamports,
-                            )
+            val tx = Transaction(
+                Message.Builder()
+                    .addInstruction(
+                        SystemProgram.transfer(
+                            SolanaPublicKey(senderAddress),
+                            SolanaPublicKey(recipient),
+                            amountLamports,
                         )
-                        .setRecentBlockhash(blockhash)
-                        .build()
+                    )
+                    .setRecentBlockhash(rpcService.getLatestBlockhash(state.value.cluster.rpcUrl))
+                    .build()
+            )
+            submitSerializedTransactions(
+                activity = activity,
+                serializedTransactions = arrayOf(tx.serialize()),
+                successMessage = "Transfer submitted from $senderAddress",
+            )
+        }
+    }
+
+    fun submitSkrStake(activity: ComponentActivity) {
+        val address = state.value.walletAddress ?: return
+        val rawAmount = uiAmountToRaw(state.value.skrStakeAmount, SKR_DECIMALS)
+        if (rawAmount == "0") {
+            _state.update { it.copy(statusMessage = "Enter a valid SKR amount before staking.") }
+            return
+        }
+        runWalletAction("Preparing official SKR stake…") {
+            val tx = skrOfficialService.buildStakeTx(rawAmount, address, address)
+            submitBase64Transaction(activity, tx.transaction, "Official SKR stake submitted.", tx.fee)
+        }
+    }
+
+    fun submitSkrUnstake(activity: ComponentActivity) {
+        val address = state.value.walletAddress ?: return
+        val rawAmount = uiAmountToRaw(state.value.skrUnstakeAmount, SKR_DECIMALS)
+        if (rawAmount == "0") {
+            _state.update { it.copy(statusMessage = "Enter a valid SKR amount before unstaking.") }
+            return
+        }
+        runWalletAction("Preparing official SKR unstake…") {
+            val tx = skrOfficialService.buildUnstakeTx(rawAmount, address)
+            submitBase64Transaction(activity, tx.transaction, "Official SKR unstake submitted.", tx.fee)
+        }
+    }
+
+    fun submitSkrWithdraw(activity: ComponentActivity) {
+        val address = state.value.walletAddress ?: return
+        runWalletAction("Preparing official SKR withdraw…") {
+            val tx = skrOfficialService.buildWithdrawTx(address, address)
+            submitBase64Transaction(activity, tx.transaction, "Official SKR withdraw submitted.", tx.fee)
+        }
+    }
+
+    fun delegateNativeStake(activity: ComponentActivity, stakeAccountAddress: String) {
+        val address = state.value.walletAddress ?: return
+        val validatorVote = NativeStakeService.DEFAULT_VALIDATOR_VOTE[state.value.cluster]
+            ?: NativeStakeService.DEFAULT_VALIDATOR_VOTE.getValue(SolanaCluster.MAINNET)
+        runWalletAction("Preparing stake delegation…") {
+            val tx = nativeStakeService.buildDelegateStakeTx(
+                ownerAddress = address,
+                stakeAccountAddress = stakeAccountAddress,
+                validatorVoteAddress = validatorVote,
+                recentBlockhash = rpcService.getLatestBlockhash(state.value.cluster.rpcUrl),
+            )
+            submitSerializedTransactions(activity, arrayOf(tx.serialize()), "Stake delegation submitted.")
+        }
+    }
+
+    fun deactivateNativeStake(activity: ComponentActivity, stakeAccountAddress: String) {
+        val address = state.value.walletAddress ?: return
+        runWalletAction("Preparing stake deactivation…") {
+            val tx = nativeStakeService.buildDeactivateStakeTx(
+                ownerAddress = address,
+                stakeAccountAddress = stakeAccountAddress,
+                recentBlockhash = rpcService.getLatestBlockhash(state.value.cluster.rpcUrl),
+            )
+            submitSerializedTransactions(activity, arrayOf(tx.serialize()), "Stake deactivation submitted.")
+        }
+    }
+
+    fun withdrawNativeStake(activity: ComponentActivity, stakeAccountAddress: String, lamports: Long) {
+        val address = state.value.walletAddress ?: return
+        runWalletAction("Preparing stake withdrawal…") {
+            val tx = nativeStakeService.buildWithdrawStakeTx(
+                ownerAddress = address,
+                stakeAccountAddress = stakeAccountAddress,
+                destinationAddress = address,
+                lamports = lamports,
+                recentBlockhash = rpcService.getLatestBlockhash(state.value.cluster.rpcUrl),
+            )
+            submitSerializedTransactions(activity, arrayOf(tx.serialize()), "Stake withdrawal submitted.")
+        }
+    }
+
+    private suspend fun submitBase64Transaction(
+        activity: ComponentActivity,
+        base64Tx: String,
+        successMessage: String,
+        feeLabel: String?,
+    ) {
+        submitSerializedTransactions(
+            activity = activity,
+            serializedTransactions = arrayOf(Base64.getDecoder().decode(base64Tx)),
+            successMessage = successMessage,
+            feeLabel = feeLabel,
+        )
+    }
+
+    private suspend fun submitSerializedTransactions(
+        activity: ComponentActivity,
+        serializedTransactions: Array<ByteArray>,
+        successMessage: String,
+        feeLabel: String? = null,
+    ) {
+        val sender = ActivityResultSender(activity)
+        when (val result = walletAdapter.transact(sender) {
+            val authToken = walletAdapter.authToken
+            if (authToken != null) {
+                reauthorize(
+                    identityUri = Uri.parse(IDENTITY_URI),
+                    iconUri = Uri.parse(ICON_URI),
+                    identityName = IDENTITY_NAME,
+                    authToken = authToken,
                 )
-                signAndSendTransactions(arrayOf(transferTx.serialize()))
-            }) {
-                is TransactionResult.Success -> {
-                    val signature = result.successPayload?.signatures?.firstOrNull()?.let(Base58::encodeToString)
-                    _state.update {
-                        it.copy(
-                            isBusy = false,
-                            statusMessage = "Transfer submitted from $senderAddress",
-                            lastSignature = signature,
-                        )
-                    }
-                    refreshPortfolio()
+            }
+            signAndSendTransactions(serializedTransactions)
+        }) {
+            is TransactionResult.Success -> {
+                val signature = result.successPayload?.signatures?.firstOrNull()?.let(Base58::encodeToString)
+                _state.update {
+                    it.copy(
+                        isBusy = false,
+                        statusMessage = successMessage + feeLabel?.let { fee -> " Fee: $fee" }.orEmpty(),
+                        lastSignature = signature,
+                        skrPosition = if (feeLabel.isNullOrBlank()) it.skrPosition else it.skrPosition.copy(lastFeeLabel = feeLabel),
+                    )
                 }
-                is TransactionResult.NoWalletFound -> {
-                    _state.update { it.copy(isBusy = false, statusMessage = "No compatible wallet app found.") }
-                }
-                is TransactionResult.Failure -> {
-                    failAction("Transfer failed: ${result.e.message}")
-                }
+                refreshPortfolio()
+            }
+            is TransactionResult.NoWalletFound -> {
+                _state.update { it.copy(isBusy = false, statusMessage = "No compatible wallet app found.") }
+            }
+            is TransactionResult.Failure -> {
+                failAction("Transaction failed: ${result.e.message}")
             }
         }
     }
@@ -447,14 +564,51 @@ class SeekerWalletViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    private fun buildSkrPosition(
+        skrState: OfficialUserStakeState?,
+        apy: Double?,
+    ): SkrPosition {
+        return SkrPosition(
+            apyLabel = if (apy == null) "APY unavailable" else "${TWO_DECIMAL.format(apy)}% APY",
+            stakedAmount = skrState?.stakedAmountForDisplay ?: "0",
+            unstakingAmount = skrState?.unstakingAmount ?: "0",
+            withdrawableAmount = skrState?.withdrawableAmountForDisplay ?: "0",
+            availableBalance = skrState?.availableBalance ?: "0",
+            lastFeeLabel = state.value.skrPosition.lastFeeLabel,
+        )
+    }
+
+    private fun uiAmountToRaw(amountText: String, decimals: Int): String {
+        val clean = amountText.trim()
+        if (clean.isBlank()) return "0"
+        if (!clean.matches(Regex("\\d+(\\.\\d+)?"))) return "0"
+        val parts = clean.split('.', limit = 2)
+        val whole = parts[0]
+        val frac = parts.getOrElse(1) { "" }
+        val padded = (frac + "0".repeat(decimals)).take(decimals)
+        val raw = (whole + padded).trimStart('0')
+        return raw.ifBlank { "0" }
+    }
+
     private object ColorPalette {
         val ACCENT = androidx.compose.ui.graphics.Color(0xFF00C2A8)
         val USDC = androidx.compose.ui.graphics.Color(0xFF1D7FF2)
     }
 
     private companion object {
+        const val IDENTITY_URI = "https://github.com/androidlord666/seekerwallet"
+        const val ICON_URI = "/favicon.ico"
+        const val IDENTITY_NAME = "SeekerWallet"
+        const val SOL_PRICE_HINT = 90.0
+        const val SKR_DECIMALS = 6
         val TWO_DECIMAL = java.text.DecimalFormat("0.00", java.text.DecimalFormatSymbols(Locale.US))
         val SIX_DECIMAL = java.text.DecimalFormat("0.000000", java.text.DecimalFormatSymbols(Locale.US))
-        const val SOL_PRICE_HINT = 90.0
     }
 }
+
+private data class PortfolioBundle(
+    val portfolio: PortfolioSnapshot,
+    val stakeAccounts: List<NativeStakeAccount>,
+    val skrState: OfficialUserStakeState?,
+    val skrApy: Double?,
+)

@@ -64,11 +64,7 @@ fun SeekerWalletScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        listOf(palette.backdropTop, palette.backdropBottom)
-                    )
-                )
+                .background(brush = Brush.verticalGradient(listOf(palette.backdropTop, palette.backdropBottom)))
                 .padding(innerPadding)
         ) {
             LazyColumn(
@@ -81,15 +77,8 @@ fun SeekerWalletScreen(
                     bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                 ),
             ) {
-                item {
-                    HeroCard(state = state)
-                }
-                item {
-                    ClusterCard(
-                        cluster = state.cluster,
-                        onClusterSelected = viewModel::updateCluster,
-                    )
-                }
+                item { HeroCard(state) }
+                item { ClusterCard(state.cluster, viewModel::updateCluster) }
                 item {
                     WalletActionsCard(
                         state = state,
@@ -101,13 +90,7 @@ fun SeekerWalletScreen(
                         onAirdrop = viewModel::requestAirdrop,
                     )
                 }
-                item {
-                    ReceiveCard(
-                        state = state,
-                        onAmountChange = viewModel::updateReceiveAmount,
-                        onMemoChange = viewModel::updateReceiveMemo,
-                    )
-                }
+                item { ReceiveCard(state, viewModel::updateReceiveAmount, viewModel::updateReceiveMemo) }
                 item {
                     SendCard(
                         state = state,
@@ -118,26 +101,36 @@ fun SeekerWalletScreen(
                     )
                 }
                 item {
-                    RoadmapCard()
+                    SkrCard(
+                        state = state,
+                        onStakeAmountChange = viewModel::updateSkrStakeAmount,
+                        onUnstakeAmountChange = viewModel::updateSkrUnstakeAmount,
+                        onStake = { activity?.let(viewModel::submitSkrStake) },
+                        onUnstake = { activity?.let(viewModel::submitSkrUnstake) },
+                        onWithdraw = { activity?.let(viewModel::submitSkrWithdraw) },
+                    )
                 }
-                item {
-                    SectionTitle("Portfolio")
+                item { RoadmapCard() }
+                item { SectionTitle("Portfolio") }
+                items(state.assets, key = { it.symbol + it.name }) { asset -> AssetCard(asset) }
+                item { SectionTitle("Native Stakes") }
+                if (state.stakeAccounts.isEmpty()) {
+                    item { EmptyStakeCard() }
+                } else {
+                    items(state.stakeAccounts, key = { it.pubkey }) { stake ->
+                        NativeStakeCard(
+                            stake = stake,
+                            onDelegate = { activity?.let { viewModel.delegateNativeStake(it, stake.pubkey) } },
+                            onDeactivate = { activity?.let { viewModel.deactivateNativeStake(it, stake.pubkey) } },
+                            onWithdraw = { activity?.let { viewModel.withdrawNativeStake(it, stake.pubkey, stake.lamports) } },
+                            isBusy = state.isBusy,
+                        )
+                    }
                 }
-                items(state.assets, key = { it.symbol + it.name }) { asset ->
-                    AssetCard(asset = asset)
-                }
-                item {
-                    SectionTitle("Integration Lanes")
-                }
-                items(state.rails, key = { it.title }) { rail ->
-                    SupportRailCard(rail = rail)
-                }
-                item {
-                    SectionTitle("Status")
-                }
-                item {
-                    StatusCard(message = state.statusMessage, lastSignature = state.lastSignature)
-                }
+                item { SectionTitle("Integration Lanes") }
+                items(state.rails, key = { it.title }) { rail -> SupportRailCard(rail) }
+                item { SectionTitle("Status") }
+                item { StatusCard(state.statusMessage, state.lastSignature) }
             }
         }
     }
@@ -156,21 +149,13 @@ private fun HeroCard(state: SeekerWalletUiState) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = state.profileName,
-                color = palette.heroText,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
+            Text(state.profileName, color = palette.heroText, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
                 text = state.jurisdictionHint,
                 color = palette.heroText.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.bodyLarge,
             )
-            Surface(
-                color = palette.heroBadge,
-                shape = RoundedCornerShape(999.dp),
-            ) {
+            Surface(color = palette.heroBadge, shape = RoundedCornerShape(999.dp)) {
                 Text(
                     text = state.riskBanner,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -212,33 +197,17 @@ private fun WalletActionsCard(
 ) {
     InfoCard(title = "Wallet Control") {
         Text(state.authLabel, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = state.walletAddress?.let(::shortAddress) ?: "No wallet address loaded",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Text(state.walletAddress?.let(::shortAddress) ?: "No wallet address loaded", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (state.walletAddress == null) {
-                Button(onClick = onConnect, enabled = !state.isBusy) {
-                    Text("Connect Wallet")
-                }
+                Button(onClick = onConnect, enabled = !state.isBusy) { Text("Connect Wallet") }
             } else {
-                Button(onClick = onRefresh, enabled = !state.isBusy) {
-                    Text("Refresh")
-                }
-                OutlinedButton(onClick = onDisconnect, enabled = !state.isBusy) {
-                    Text("Disconnect")
-                }
+                Button(onClick = onRefresh, enabled = !state.isBusy) { Text("Refresh") }
+                OutlinedButton(onClick = onDisconnect, enabled = !state.isBusy) { Text("Disconnect") }
             }
-            OutlinedButton(onClick = onSignIn, enabled = !state.isBusy) {
-                Text("Sign In")
-            }
-            OutlinedButton(onClick = onSignMessage, enabled = !state.isBusy && state.walletAddress != null) {
-                Text("Sign Message")
-            }
-            OutlinedButton(onClick = onAirdrop, enabled = !state.isBusy && state.cluster == SolanaCluster.DEVNET) {
-                Text("Airdrop")
-            }
+            OutlinedButton(onClick = onSignIn, enabled = !state.isBusy) { Text("Sign In") }
+            OutlinedButton(onClick = onSignMessage, enabled = !state.isBusy && state.walletAddress != null) { Text("Sign Message") }
+            OutlinedButton(onClick = onAirdrop, enabled = !state.isBusy && state.cluster == SolanaCluster.DEVNET) { Text("Airdrop") }
         }
     }
 }
@@ -250,29 +219,10 @@ private fun ReceiveCard(
     onMemoChange: (String) -> Unit,
 ) {
     InfoCard(title = "Receive") {
-        Text(
-            text = state.walletAddress ?: "Connect a wallet to generate a receive request.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        OutlinedTextField(
-            value = state.receiveAmountSol,
-            onValueChange = onAmountChange,
-            label = { Text("Amount (SOL)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = state.receiveMemo,
-            onValueChange = onMemoChange,
-            label = { Text("Memo") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        Text(
-            text = state.receiveUri.ifBlank { "solana:..." },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(state.walletAddress ?: "Connect a wallet to generate a receive request.", style = MaterialTheme.typography.bodyMedium)
+        OutlinedTextField(value = state.receiveAmountSol, onValueChange = onAmountChange, label = { Text("Amount (SOL)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(value = state.receiveMemo, onValueChange = onMemoChange, label = { Text("Memo") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        Text(state.receiveUri.ifBlank { "solana:..." }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -285,33 +235,38 @@ private fun SendCard(
     onSend: () -> Unit,
 ) {
     InfoCard(title = "Send") {
-        OutlinedTextField(
-            value = state.draftRecipient,
-            onValueChange = onRecipientChange,
-            label = { Text("Recipient") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = state.draftAmountSol,
-            onValueChange = onAmountChange,
-            label = { Text("Amount (SOL)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = state.draftMemo,
-            onValueChange = onMemoChange,
-            label = { Text("Memo") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        Button(
-            onClick = onSend,
-            enabled = !state.isBusy && state.walletAddress != null,
-        ) {
-            Text("Review In Wallet")
+        OutlinedTextField(value = state.draftRecipient, onValueChange = onRecipientChange, label = { Text("Recipient") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(value = state.draftAmountSol, onValueChange = onAmountChange, label = { Text("Amount (SOL)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(value = state.draftMemo, onValueChange = onMemoChange, label = { Text("Memo") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        Button(onClick = onSend, enabled = !state.isBusy && state.walletAddress != null) { Text("Review In Wallet") }
+    }
+}
+
+@Composable
+private fun SkrCard(
+    state: SeekerWalletUiState,
+    onStakeAmountChange: (String) -> Unit,
+    onUnstakeAmountChange: (String) -> Unit,
+    onStake: () -> Unit,
+    onUnstake: () -> Unit,
+    onWithdraw: () -> Unit,
+) {
+    InfoCard(title = "Official SKR") {
+        Text(state.skrPosition.apyLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("Staked: ${state.skrPosition.stakedAmount}", style = MaterialTheme.typography.bodyMedium)
+        Text("Unstaking: ${state.skrPosition.unstakingAmount}", style = MaterialTheme.typography.bodyMedium)
+        Text("Withdrawable: ${state.skrPosition.withdrawableAmount}", style = MaterialTheme.typography.bodyMedium)
+        Text("Available: ${state.skrPosition.availableBalance}", style = MaterialTheme.typography.bodyMedium)
+        if (state.skrPosition.lastFeeLabel.isNotBlank()) {
+            Text("Last fee quote: ${state.skrPosition.lastFeeLabel}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         }
+        OutlinedTextField(value = state.skrStakeAmount, onValueChange = onStakeAmountChange, label = { Text("Stake amount (SKR)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onStake, enabled = !state.isBusy && state.walletAddress != null) { Text("Stake SKR") }
+            OutlinedButton(onClick = onWithdraw, enabled = !state.isBusy && state.walletAddress != null) { Text("Withdraw SKR") }
+        }
+        OutlinedTextField(value = state.skrUnstakeAmount, onValueChange = onUnstakeAmountChange, label = { Text("Unstake amount (SKR)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedButton(onClick = onUnstake, enabled = !state.isBusy && state.walletAddress != null) { Text("Unstake SKR") }
     }
 }
 
@@ -319,7 +274,7 @@ private fun SendCard(
 private fun RoadmapCard() {
     InfoCard(title = "Staking + Keyboard Roadmap") {
         Text(
-            text = "Phase 1 keeps transfers and wallet auth live. Phase 2 extracts SOL staking, official SKR staking, and SKR fee routing into a shared module. Phase 3 adds an IME launcher that hands off to a secure review screen.",
+            text = "Phase 1 keeps transfers and wallet auth live. Phase 2 now includes official SKR transactions plus native stake account management. Phase 3 adds an IME launcher that hands off to a secure review screen.",
             style = MaterialTheme.typography.bodyMedium,
         )
     }
@@ -351,14 +306,48 @@ private fun AssetCard(asset: WalletAsset) {
 }
 
 @Composable
+private fun EmptyStakeCard() {
+    InfoCard(title = "No Native Stake Accounts", compact = true) {
+        Text(
+            text = "Connect a wallet and refresh to load any stake accounts where you are staker or withdraw authority.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun NativeStakeCard(
+    stake: NativeStakeAccount,
+    onDelegate: () -> Unit,
+    onDeactivate: () -> Unit,
+    onWithdraw: () -> Unit,
+    isBusy: Boolean,
+) {
+    InfoCard(title = shortAddress(stake.pubkey), compact = true) {
+        Text("Balance: ${formatLamportsAsSol(stake.lamports)}", style = MaterialTheme.typography.bodyMedium)
+        Text("State: ${stake.stakeState}", style = MaterialTheme.typography.bodyMedium)
+        if (!stake.delegationVote.isNullOrBlank()) {
+            Text("Vote: ${shortAddress(stake.delegationVote)}", style = MaterialTheme.typography.bodySmall)
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (stake.canStake && isStakeInactive(stake)) {
+                Button(onClick = onDelegate, enabled = !isBusy) { Text("Delegate") }
+            }
+            if (stake.canStake && !isStakeInactive(stake)) {
+                OutlinedButton(onClick = onDeactivate, enabled = !isBusy) { Text("Deactivate") }
+            }
+            if (stake.canWithdraw && isStakeInactive(stake)) {
+                OutlinedButton(onClick = onWithdraw, enabled = !isBusy) { Text("Withdraw") }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SupportRailCard(rail: SupportRail) {
     InfoCard(title = rail.title, compact = true) {
         Text(rail.description, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = rail.tag,
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelMedium,
-        )
+        Text(rail.tag, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
     }
 }
 
@@ -370,21 +359,14 @@ private fun StatusCard(
     InfoCard(title = "Wallet Status", compact = true) {
         Text(message, style = MaterialTheme.typography.bodyMedium)
         if (!lastSignature.isNullOrBlank()) {
-            Text(
-                text = "Last signature: ${shortAddress(lastSignature)}",
-                style = MaterialTheme.typography.labelMedium,
-            )
+            Text("Last signature: ${shortAddress(lastSignature)}", style = MaterialTheme.typography.labelMedium)
         }
     }
 }
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
+    Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
