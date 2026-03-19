@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.androidlord.seekerkeyboard.ime.KeyboardLanguage
+import com.androidlord.seekerkeyboard.ime.KeyboardLayoutMode
 import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
 import com.androidlord.seekerkeyboard.ime.KeyboardTheme
 import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
@@ -99,7 +101,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsCard("Keyboard Enablement") {
-                    Text("This app is for onboarding, recovery, and advanced customization. Wallet, stake, clipboard, and theme controls are driven from the keyboard.", style = MaterialTheme.typography.bodyMedium)
+                    Text("This app is for onboarding, recovery, and advanced customization. Wallet, stake, clipboard, theme controls, and layout modes are driven from the keyboard.", style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) {
                             Text("Enable IME")
@@ -127,7 +129,35 @@ fun SettingsScreen(
                 }
             }
             item {
+                SettingsCard("Language") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        KeyboardLanguage.entries.forEach { option ->
+                            AssistChip(
+                                onClick = {
+                                    settingsStore.saveLanguage(option)
+                                    refresh()
+                                },
+                                label = { Text(option.label) },
+                                enabled = option != settings.language,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
                 SettingsCard("Layout") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        KeyboardLayoutMode.entries.forEach { option ->
+                            AssistChip(
+                                onClick = {
+                                    settingsStore.saveLayoutMode(option)
+                                    refresh()
+                                },
+                                label = { Text(option.label) },
+                                enabled = option != settings.layoutMode,
+                            )
+                        }
+                    }
                     ToggleRow("Number row", settings.showNumberRow) {
                         settingsStore.saveNumberRow(it)
                         refresh()
@@ -218,11 +248,6 @@ fun SettingsScreen(
                     }
                 }
             }
-            item {
-                SettingsCard("Roadmap") {
-                    Text("Next hardening pass: richer layout engine, long-press layers, gesture typing, safer consolidation eligibility checks, and production device QA on Solana phones.", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
         }
     }
 }
@@ -230,7 +255,7 @@ fun SettingsScreen(
 @Composable
 private fun HeaderCard() {
     SettingsCard("SeekerKeyboard") {
-        Text("Private keyboard with discreet wallet, clipboard, theme, and settings controls embedded directly in the typing surface.", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+        Text("Private keyboard with discreet wallet, clipboard, theme, layout, and settings controls embedded directly in the typing surface.", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
     }
 }
 

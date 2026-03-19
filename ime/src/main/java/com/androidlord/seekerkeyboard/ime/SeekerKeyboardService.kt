@@ -27,6 +27,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var shiftState: ShiftState = ShiftState.OFF
     private var ephemeralHint: String = ""
     private var alternateOptions: List<String> = emptyList()
+    private var alternateAnchorRatio: Float = 0.5f
 
     override fun onCreate() {
         super.onCreate()
@@ -52,12 +53,14 @@ class SeekerKeyboardService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         alternateOptions = emptyList()
+        alternateAnchorRatio = 0.5f
         ephemeralHint = ""
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         alternateOptions = emptyList()
+        alternateAnchorRatio = 0.5f
         ephemeralHint = ""
     }
 
@@ -102,6 +105,7 @@ class SeekerKeyboardService : InputMethodService() {
                 shiftState = shiftState,
                 ephemeralHint = ephemeralHint,
                 alternateOptions = alternateOptions,
+                alternateAnchorRatio = alternateAnchorRatio,
             ),
             onKeyPress = ::handleKeyPress,
             onUtilityPress = ::handleUtilityPress,
@@ -119,7 +123,15 @@ class SeekerKeyboardService : InputMethodService() {
             "space" -> inputConnection.commitText(" ", 1)
             "enter" -> inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             "wallet" -> togglePanel(UtilityPanel.WALLET)
-            else -> inputConnection.commitText(key, 1)
+            else -> {
+                if (key.startsWith("glide:")) {
+                    val word = key.removePrefix("glide:")
+                    inputConnection.commitText(word, 1)
+                    ephemeralHint = "glide $word"
+                } else {
+                    inputConnection.commitText(key, 1)
+                }
+            }
         }
         if (key !in setOf("wallet")) {
             alternateOptions = emptyList()
@@ -174,8 +186,12 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:toggle_symbols" -> toggleSymbols()
             action.startsWith("action:hint:") -> ephemeralHint = action.removePrefix("action:hint:")
             action.startsWith("action:show_alts:") -> {
-                alternateOptions = action.removePrefix("action:show_alts:")
-                    .split('|')
+                val payload = action.removePrefix("action:show_alts:")
+                val firstSeparator = payload.indexOf(':')
+                val ratio = if (firstSeparator > 0) payload.substring(0, firstSeparator).toFloatOrNull() ?: 0.5f else 0.5f
+                val items = if (firstSeparator > 0) payload.substring(firstSeparator + 1) else payload
+                alternateAnchorRatio = ratio
+                alternateOptions = items.split('|')
                     .filter { it.isNotBlank() }
                 ephemeralHint = "pick alternate"
             }
@@ -183,10 +199,12 @@ class SeekerKeyboardService : InputMethodService() {
                 val value = action.removePrefix("action:pick_alt:")
                 currentInputConnection?.commitText(value, 1)
                 alternateOptions = emptyList()
+                alternateAnchorRatio = 0.5f
                 ephemeralHint = value
             }
             action == "action:clear_alts" -> {
                 alternateOptions = emptyList()
+                alternateAnchorRatio = 0.5f
                 ephemeralHint = ""
             }
             action == "action:open_settings" -> launchSettingsApp()
@@ -205,6 +223,8 @@ class SeekerKeyboardService : InputMethodService() {
                 clipboardHistoryStore.clear()
             }
             action == "action:cycle_theme" -> cycleTheme()
+            action == "action:cycle_layout" -> cycleLayoutMode()
+            action == "action:cycle_language" -> cycleLanguage()
             action == "action:redraw" -> Unit
             action == "action:sources_up" -> settingsStore.saveConsolidationSourceCountPreview(settingsStore.load().consolidationSourceCountPreview + 1)
             action == "action:sources_down" -> settingsStore.saveConsolidationSourceCountPreview(settingsStore.load().consolidationSourceCountPreview - 1)
@@ -230,6 +250,7 @@ class SeekerKeyboardService : InputMethodService() {
             KeyboardLayer.MORE_SYMBOLS -> KeyboardLayer.ALPHA
         }
         shiftState = ShiftState.OFF
+        alternateOptions = emptyList()
     }
 
     private fun moveSelectedStake(delta: Int) {
@@ -256,6 +277,29 @@ class SeekerKeyboardService : InputMethodService() {
             KeyboardTheme.GRAPHITE -> KeyboardTheme.SAND
         }
         settingsStore.saveTheme(next)
+        ephemeralHint = "theme ${next.label.lowercase()}"
+    }
+
+    private fun cycleLayoutMode() {
+        val current = settingsStore.load().layoutMode
+        val next = when (current) {
+            KeyboardLayoutMode.COMPACT -> KeyboardLayoutMode.COMFORT
+            KeyboardLayoutMode.COMFORT -> KeyboardLayoutMode.THUMB
+            KeyboardLayoutMode.THUMB -> KeyboardLayoutMode.COMPACT
+        }
+        settingsStore.saveLayoutMode(next)
+        ephemeralHint = "layout ${next.label.lowercase()}"
+    }
+
+    private fun cycleLanguage() {
+        val current = settingsStore.load().language
+        val next = when (current) {
+            KeyboardLanguage.ENGLISH -> KeyboardLanguage.SPANISH
+            KeyboardLanguage.SPANISH -> KeyboardLanguage.PORTUGUESE
+            KeyboardLanguage.PORTUGUESE -> KeyboardLanguage.ENGLISH
+        }
+        settingsStore.saveLanguage(next)
+        ephemeralHint = "language ${next.label.lowercase()}"
     }
 
     private fun pasteClipboard() {
