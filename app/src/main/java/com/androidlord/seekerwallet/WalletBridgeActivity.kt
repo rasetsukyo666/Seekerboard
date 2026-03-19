@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.androidlord.seekerkeyboard.ime.ConsolidationFeeModel
+import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
 import com.androidlord.seekerkeyboard.ime.UnifiedAccountPreview
 import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
 import com.androidlord.seekerkeyboard.ime.WalletAccessGuardStore
@@ -34,6 +35,7 @@ import java.util.Locale
 
 class WalletBridgeActivity : ComponentActivity() {
     private lateinit var sessionStore: WalletSessionStore
+    private lateinit var settingsStore: KeyboardSettingsStore
     private lateinit var draftStore: WalletActionDraftStore
     private lateinit var walletAccessGuardStore: WalletAccessGuardStore
     private val rpcService = SolanaRpcService()
@@ -54,6 +56,7 @@ class WalletBridgeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sessionStore = WalletSessionStore(applicationContext)
+        settingsStore = KeyboardSettingsStore(applicationContext)
         draftStore = WalletActionDraftStore(applicationContext)
         walletAccessGuardStore = WalletAccessGuardStore(applicationContext)
         lifecycleScope.launch {
@@ -84,7 +87,7 @@ class WalletBridgeActivity : ComponentActivity() {
         if (!existingAddress.isNullOrBlank() && !existingAuthToken.isNullOrBlank()) {
             walletAdapter.authToken = existingAuthToken
             refreshSnapshot(existingAddress, sessionStore.loadCluster())
-            walletAccessGuardStore.unlock()
+            walletAccessGuardStore.unlock(settingsStore.load().walletUnlockMode)
             walletAccessGuardStore.markPendingOpenWallet()
             sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "connect")
             sessionStore.saveKeyboardStatus("Wallet session active for ${shortAddress(existingAddress)}.")
@@ -100,7 +103,7 @@ class WalletBridgeActivity : ComponentActivity() {
                 walletAdapter.authToken = result.authResult.authToken
                 refreshSnapshot(address, sessionStore.loadCluster())
                 sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = "connect")
-                walletAccessGuardStore.unlock()
+                walletAccessGuardStore.unlock(settingsStore.load().walletUnlockMode)
                 walletAccessGuardStore.markPendingOpenWallet()
                 sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}. Wallet session stored, return to keyboard.")
             }
