@@ -291,16 +291,9 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
-            action == "action:pin_clip" -> {
-                clipboardHistoryStore.pin(clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this))
-                ephemeralHint = "clipboard pinned"
+            action.startsWith("action:clip_item:") -> {
+                pasteClipboardItem(action.removePrefix("action:clip_item:"))
             }
-            action == "action:hist_1" -> pasteHistory(0)
-            action == "action:hist_2" -> pasteHistory(1)
-            action == "action:hist_3" -> pasteHistory(2)
-            action == "action:hist_4" -> pasteHistory(3)
-            action == "action:pin_1" -> pastePinned(0)
-            action == "action:pin_2" -> pastePinned(1)
             action == "action:cursor_left" -> moveCursor(-1)
             action == "action:cursor_right" -> moveCursor(1)
             action == "action:delete_char" -> deleteSelectionOrPreviousChar()
@@ -424,10 +417,10 @@ class SeekerKeyboardService : InputMethodService() {
         alternateReplacementLength = 0
     }
 
-    private fun pastePinned(index: Int) {
-        val item = clipboardHistoryStore.loadPinned().getOrNull(index) ?: return
-        currentInputConnection?.commitText(item, 1)
-        ephemeralHint = "pasted pinned ${index + 1}"
+    private fun pasteClipboardItem(value: String) {
+        if (value.isBlank()) return
+        currentInputConnection?.commitText(value, 1)
+        ephemeralHint = "clipboard item pasted"
         alternateOptions = emptyList()
         alternateReplacementLength = 0
     }

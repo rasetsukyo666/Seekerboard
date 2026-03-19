@@ -18,6 +18,7 @@ import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.Space
 import android.widget.TextView
 import java.util.Locale
@@ -501,22 +502,55 @@ class SeekerKeyboardView(
     private fun renderClipboardPanel(card: LinearLayout, settings: KeyboardSettings, panelState: KeyboardPanelState, onUtilityPress: (String) -> Unit) {
         card.addView(panelTitle("Clipboard", settings))
         card.addView(statusChip(compactStatus(panelState.clipboardPreview), settings))
-        if (panelState.clipboardPinned.isNotEmpty()) {
-            card.addView(panelText("Pinned", settings))
-            panelState.clipboardPinned.take(3).forEachIndexed { index, item ->
-                card.addView(panelText("★ ${index + 1}. ${item.take(36)}", settings))
-            }
+        card.addView(panelActions(settings, listOf("paste", "clear"), onUtilityPress))
+        val items = (panelState.clipboardPinned + panelState.clipboardHistory)
+            .filter { it.isNotBlank() }
+            .distinct()
+        if (items.isEmpty()) {
+            card.addView(panelText("No clipboard history yet", settings))
+            return
         }
-        if (panelState.clipboardHistory.isEmpty()) {
-            card.addView(panelText("No history yet", settings))
-        } else {
-            panelState.clipboardHistory.take(4).forEachIndexed { index, item ->
-                card.addView(panelText("${index + 1}. ${item.take(36)}", settings))
+        card.addView(buildClipboardList(items, settings, onUtilityPress))
+    }
+
+    private fun buildClipboardList(
+        items: List<String>,
+        settings: KeyboardSettings,
+        onUtilityPress: (String) -> Unit,
+    ): View {
+        return ScrollView(context).apply {
+            isVerticalScrollBarEnabled = false
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(150)).apply {
+                topMargin = dp(8)
             }
+            addView(
+                LinearLayout(context).apply {
+                    orientation = VERTICAL
+                    items.take(12).forEachIndexed { index, item ->
+                        addView(
+                            Button(context).apply {
+                                text = "${index + 1}. ${clipboardLabel(item)}"
+                                isAllCaps = false
+                                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                                typeface = resolvedTypeface(settings)
+                                setTextColor(foregroundColor(settings))
+                                background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(12))
+                                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                                    topMargin = dp(4)
+                                }
+                                setPadding(dp(12), dp(10), dp(12), dp(10))
+                                setOnClickListener { onUtilityPress("action:clip_item:$item") }
+                            }
+                        )
+                    }
+                }
+            )
         }
-        card.addView(panelActions(settings, listOf("paste", "pin_clip", "hist_1"), onUtilityPress))
-        card.addView(panelActions(settings, listOf("hist_2", "hist_3", "hist_4"), onUtilityPress))
-        card.addView(panelActions(settings, listOf("pin_1", "pin_2", "clear"), onUtilityPress))
+    }
+
+    private fun clipboardLabel(item: String): String {
+        val trimmed = item.trim()
+        return if (trimmed.length <= 42) trimmed else "${trimmed.take(42)}..."
     }
 
     private fun panelTitle(text: String, settings: KeyboardSettings): View = TextView(context).apply {
