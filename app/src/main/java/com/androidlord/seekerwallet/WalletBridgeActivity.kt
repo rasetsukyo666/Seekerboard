@@ -4,9 +4,13 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.androidlord.seekerkeyboard.ime.ConsolidationFeeModel
+import com.androidlord.seekerkeyboard.ime.WalletActionDraftStore
 import com.androidlord.seekerwallet.data.WalletSessionStore
 import com.androidlord.seekerwallet.wallet.NativeStakeAccount
+import com.androidlord.seekerwallet.wallet.NativeStakeService
 import com.androidlord.seekerwallet.wallet.OfficialUserStakeState
+import com.androidlord.seekerwallet.wallet.OfficialTxEnvelope
 import com.androidlord.seekerwallet.wallet.PortfolioSnapshot
 import com.androidlord.seekerwallet.wallet.SkrOfficialService
 import com.androidlord.seekerwallet.wallet.SkrPosition
@@ -18,16 +22,23 @@ import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
 import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
+import com.solana.publickey.SolanaPublicKey
+import com.solana.transaction.Message
+import com.solana.transaction.SystemProgram
+import com.solana.transaction.Transaction
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.util.Base64
 import java.util.Locale
 
 class WalletBridgeActivity : ComponentActivity() {
     private lateinit var sessionStore: WalletSessionStore
+    private lateinit var draftStore: WalletActionDraftStore
     private val rpcService = SolanaRpcService()
+    private val nativeStakeService = NativeStakeService()
     private val skrOfficialService = SkrOfficialService()
     private val walletAdapter by lazy {
         MobileWalletAdapter(
@@ -44,11 +55,20 @@ class WalletBridgeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sessionStore = WalletSessionStore(applicationContext)
+        draftStore = WalletActionDraftStore(applicationContext)
         lifecycleScope.launch {
             runCatching {
                 when (intent?.getStringExtra("wallet_action").orEmpty()) {
                     "connect" -> handleConnect()
                     "disconnect" -> handleDisconnect()
+                    "send" -> handleSend()
+                    "skr_stake" -> handleSkrStake()
+                    "skr_unstake" -> handleSkrUnstake()
+                    "skr_withdraw" -> handleSkrWithdraw()
+                    "native_delegate" -> handleNativeDelegate()
+                    "native_deactivate" -> handleNativeDeactivate()
+                    "native_withdraw" -> handleNativeWithdraw()
+                    "consolidate" -> handleConsolidate()
                     else -> handleRefresh()
                 }
             }.onFailure { error ->
@@ -66,15 +86,11 @@ class WalletBridgeActivity : ComponentActivity() {
                 sessionStore.saveWalletAddress(address)
                 sessionStore.saveAuthToken(result.authResult.authToken)
                 walletAdapter.authToken = result.authResult.authToken
-                sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}. Syncing wallet snapshot…")
                 refreshSnapshot(address, sessionStore.loadCluster())
+                sessionStore.saveKeyboardStatus("Connected ${shortAddress(address)}.")
             }
-            is TransactionResult.NoWalletFound -> {
-                sessionStore.saveKeyboardStatus("No MWA wallet found on this device.")
-            }
-            is TransactionResult.Failure -> {
-                sessionStore.saveKeyboardStatus("Wallet connection failed: ${result.e.message}")
-            }
+            is TransactionResult.NoWalletFound -> sessionStore.saveKeyboardStatus("No MWA wallet found on this device.")
+            is TransactionResult.Failure -> sessionStore.saveKeyboardStatus("Wallet connection failed: ${result.e.message}")
         }
     }
 
@@ -86,9 +102,7 @@ class WalletBridgeActivity : ComponentActivity() {
                 walletAdapter.authToken = null
                 sessionStore.saveKeyboardStatus("Keyboard wallet session cleared.")
             }
-            is TransactionResult.Failure -> {
-                sessionStore.saveKeyboardStatus("Disconnect failed: ${result.e.message}")
-            }
+            is TransactionResult.Failure -> sessionStore.saveKeyboardStatus("Disconnect failed: ${result.e.message}")
         }
     }
 
@@ -98,8 +112,127 @@ class WalletBridgeActivity : ComponentActivity() {
             sessionStore.saveKeyboardStatus("No wallet connected.")
             return
         }
-        sessionStore.saveKeyboardStatus("Refreshing ${shortAddress(address)} from ${sessionStore.loadCluster().label}…")
         refreshSnapshot(address, sessionStore.loadCluster())
+        sessionStore.saveKeyboardStatus("Synced ${shortAddress(address)} on ${sessionStore.loadCluster().label}.")
+    }
+
+    private suspend fun handleSend() {
+        val address = requireWalletAddress()
+        val recipient = intent?.getStringExtra("recipient").orEmpty().trim()
+        val amountSol = draftStore.load().sendAmountSol
+        val amountLamports = amountSol.toDoubleOrNull()?.times(1_000_000_000.0)?.toLong() ?: 0L
+        require(recipient.isNotBlank()) { "Copy a destination wallet address to the clipboard first." }
+        require(amountLamports > 0L) { "Invalid SOL send amount." }
+
+        val tx = Transaction(
+            Message.Builder()
+                .addInstruction(
+                    SystemProgram.transfer(
+                        SolanaPublicKey(address),
+                        SolanaPublicKey(recipient),
+                        amountLamports,
+                    )
+                )
+                .setRecentBlockhash(rpcService.getLatestBlockhash(sessionStore.loadCluster().rpcUrl))
+                .build()
+        )
+        submitSerializedTransactions(arrayOf(tx.serialize()), "Sent $amountSol SOL to ${shortAddress(recipient)}.")
+    }
+
+    private suspend fun handleSkrStake() {
+        val address = requireWalletAddress()
+        val rawAmount = uiAmountToRaw(draftStore.load().skrStakeAmount, SKR_DECIMALS)
+        require(rawAmount != "0") { "Invalid SKR stake amount." }
+        submitBase64Envelope(
+            skrOfficialService.buildStakeTx(rawAmount, address, address),
+            "SKR stake submitted."
+        )
+    }
+
+    private suspend fun handleSkrUnstake() {
+        val address = requireWalletAddress()
+        val rawAmount = uiAmountToRaw(draftStore.load().skrUnstakeAmount, SKR_DECIMALS)
+        require(rawAmount != "0") { "Invalid SKR unstake amount." }
+        submitBase64Envelope(
+            skrOfficialService.buildUnstakeTx(rawAmount, address),
+            "SKR unstake submitted."
+        )
+    }
+
+    private suspend fun handleSkrWithdraw() {
+        val address = requireWalletAddress()
+        submitBase64Envelope(
+            skrOfficialService.buildWithdrawTx(address, address),
+            "SKR withdraw submitted."
+        )
+    }
+
+    private suspend fun handleNativeDelegate() {
+        val address = requireWalletAddress()
+        val stakeAccountAddress = requireSelectedStakePubkey()
+        val validatorVote = NativeStakeService.DEFAULT_VALIDATOR_VOTE[sessionStore.loadCluster()]
+            ?: NativeStakeService.DEFAULT_VALIDATOR_VOTE.getValue(SolanaCluster.MAINNET)
+        val tx = nativeStakeService.buildDelegateStakeTx(
+            ownerAddress = address,
+            stakeAccountAddress = stakeAccountAddress,
+            validatorVoteAddress = validatorVote,
+            recentBlockhash = rpcService.getLatestBlockhash(sessionStore.loadCluster().rpcUrl),
+        )
+        submitSerializedTransactions(arrayOf(tx.serialize()), "Stake delegation submitted.")
+    }
+
+    private suspend fun handleNativeDeactivate() {
+        val address = requireWalletAddress()
+        val stakeAccountAddress = requireSelectedStakePubkey()
+        val tx = nativeStakeService.buildDeactivateStakeTx(
+            ownerAddress = address,
+            stakeAccountAddress = stakeAccountAddress,
+            recentBlockhash = rpcService.getLatestBlockhash(sessionStore.loadCluster().rpcUrl),
+        )
+        submitSerializedTransactions(arrayOf(tx.serialize()), "Stake deactivation submitted.")
+    }
+
+    private suspend fun handleNativeWithdraw() {
+        val address = requireWalletAddress()
+        val stakeAccountAddress = requireSelectedStakePubkey()
+        val lamports = intent?.getStringExtra("selected_stake_lamports")?.toLongOrNull() ?: 0L
+        require(lamports > 0L) { "Selected stake account is empty." }
+        val tx = nativeStakeService.buildWithdrawStakeTx(
+            ownerAddress = address,
+            stakeAccountAddress = stakeAccountAddress,
+            destinationAddress = address,
+            lamports = lamports,
+            recentBlockhash = rpcService.getLatestBlockhash(sessionStore.loadCluster().rpcUrl),
+        )
+        submitSerializedTransactions(arrayOf(tx.serialize()), "Stake withdrawal submitted.")
+    }
+
+    private suspend fun handleConsolidate() {
+        val address = requireWalletAddress()
+        val cluster = sessionStore.loadCluster()
+        val accounts = rpcService.fetchStakeAccounts(cluster.rpcUrl, address).sortedByDescending { it.lamports }
+        val destination = selectConsolidationDestination(accounts)
+        require(destination != null) { "No destination stake account available for consolidation." }
+
+        val sourceLimit = intent?.getStringExtra("consolidation_source_count")?.toIntOrNull()?.coerceIn(1, 99) ?: 1
+        val sources = selectConsolidationSources(destination, accounts, sourceLimit)
+        require(sources.isNotEmpty()) { "No merge-compatible source stake accounts available." }
+
+        val blockhash = rpcService.getLatestBlockhash(cluster.rpcUrl)
+        val txs = sources.map { source ->
+            nativeStakeService.buildMergeStakeTx(
+                ownerAddress = address,
+                destinationStakeAccountAddress = destination.pubkey,
+                sourceStakeAccountAddress = source.pubkey,
+                recentBlockhash = blockhash,
+            ).serialize()
+        }.toTypedArray()
+
+        val feeQuote = ConsolidationFeeModel.quote(sources.size)
+        submitSerializedTransactions(
+            serializedTransactions = txs,
+            successMessage = "Consolidation submitted to ${shortAddress(destination.pubkey)}. Fee carry ${feeQuote.feeInSkr} SKR.",
+        )
     }
 
     private suspend fun refreshSnapshot(
@@ -107,20 +240,10 @@ class WalletBridgeActivity : ComponentActivity() {
         cluster: SolanaCluster,
     ) {
         val bundle = coroutineScope {
-            val portfolioDeferred = async {
-                rpcService.loadPortfolio(cluster.rpcUrl, address)
-            }
-            val stakeDeferred = async {
-                runCatching {
-                    rpcService.fetchStakeAccounts(cluster.rpcUrl, address)
-                }.getOrDefault(emptyList())
-            }
-            val skrDeferred = async {
-                runCatching { skrOfficialService.fetchUserStake(address) }.getOrNull()
-            }
-            val apyDeferred = async {
-                runCatching { skrOfficialService.fetchCurrentApy() }.getOrNull()
-            }
+            val portfolioDeferred = async { rpcService.loadPortfolio(cluster.rpcUrl, address) }
+            val stakeDeferred = async { runCatching { rpcService.fetchStakeAccounts(cluster.rpcUrl, address) }.getOrDefault(emptyList()) }
+            val skrDeferred = async { runCatching { skrOfficialService.fetchUserStake(address) }.getOrNull() }
+            val apyDeferred = async { runCatching { skrOfficialService.fetchCurrentApy() }.getOrNull() }
             KeyboardPortfolioBundle(
                 portfolio = portfolioDeferred.await(),
                 stakeAccounts = stakeDeferred.await(),
@@ -138,7 +261,50 @@ class WalletBridgeActivity : ComponentActivity() {
             stakeAccounts = bundle.stakeAccounts,
             eligibleConsolidationSources = estimateEligibleConsolidationSources(bundle.stakeAccounts),
         )
-        sessionStore.saveKeyboardStatus("Synced ${shortAddress(address)} on ${cluster.label}.")
+    }
+
+    private suspend fun submitBase64Envelope(
+        envelope: OfficialTxEnvelope,
+        successMessage: String,
+    ) {
+        submitSerializedTransactions(
+            serializedTransactions = arrayOf(Base64.getDecoder().decode(envelope.transaction)),
+            successMessage = successMessage,
+            feeLabel = envelope.fee,
+        )
+    }
+
+    private suspend fun submitSerializedTransactions(
+        serializedTransactions: Array<ByteArray>,
+        successMessage: String,
+        feeLabel: String? = null,
+    ) {
+        val sender = ActivityResultSender(this)
+        when (val result = walletAdapter.transact(sender) {
+            walletAdapter.authToken?.let { authToken ->
+                reauthorize(
+                    identityUri = Uri.parse(IDENTITY_URI),
+                    iconUri = Uri.parse(ICON_URI),
+                    identityName = IDENTITY_NAME,
+                    authToken = authToken,
+                )
+            }
+            signAndSendTransactions(serializedTransactions)
+        }) {
+            is TransactionResult.Success -> {
+                val signature = result.successPayload?.signatures?.firstOrNull()?.let(Base58::encodeToString)
+                sessionStore.loadWalletAddress()?.let { refreshSnapshot(it, sessionStore.loadCluster()) }
+                sessionStore.saveKeyboardStatus(
+                    buildString {
+                        append(successMessage)
+                        feeLabel?.takeIf { it.isNotBlank() }?.let { append(" Fee: $it") }
+                        signature?.let { append(" Sig ${shortAddress(it)}") }
+                    }
+                )
+            }
+            is TransactionResult.NoWalletFound -> sessionStore.saveKeyboardStatus("No compatible wallet app found.")
+            is TransactionResult.Failure -> sessionStore.saveKeyboardStatus("Transaction failed: ${result.e.message}")
+        }
     }
 
     private fun buildSkrPosition(
@@ -160,6 +326,49 @@ class WalletBridgeActivity : ComponentActivity() {
         return (largestValidatorGroup - 1).coerceAtLeast(0)
     }
 
+    private fun selectConsolidationDestination(accounts: List<NativeStakeAccount>): NativeStakeAccount? {
+        return accounts
+            .filter { it.delegationVote != null && !isStakeInactive(it) }
+            .maxByOrNull { it.lamports }
+    }
+
+    private fun selectConsolidationSources(
+        destination: NativeStakeAccount,
+        accounts: List<NativeStakeAccount>,
+        limit: Int,
+    ): List<NativeStakeAccount> {
+        return accounts
+            .asSequence()
+            .filter { it.pubkey != destination.pubkey }
+            .filter { it.delegationVote != null && it.delegationVote == destination.delegationVote }
+            .filter { !isStakeInactive(it) }
+            .take(limit)
+            .toList()
+    }
+
+    private fun requireWalletAddress(): String {
+        return sessionStore.loadWalletAddress().orEmpty().also {
+            require(it.isNotBlank()) { "No wallet connected." }
+        }
+    }
+
+    private fun requireSelectedStakePubkey(): String {
+        return intent?.getStringExtra("selected_stake_pubkey").orEmpty().also {
+            require(it.isNotBlank()) { "Select a stake account first." }
+        }
+    }
+
+    private fun uiAmountToRaw(amountText: String, decimals: Int): String {
+        val clean = amountText.trim()
+        if (clean.isBlank() || !clean.matches(Regex("\\d+(\\.\\d+)?"))) return "0"
+        val parts = clean.split('.', limit = 2)
+        val whole = parts[0]
+        val frac = parts.getOrElse(1) { "" }
+        val padded = (frac + "0".repeat(decimals)).take(decimals)
+        val raw = (whole + padded).trimStart('0')
+        return raw.ifBlank { "0" }
+    }
+
     private fun shortAddress(address: String): String {
         return if (address.length <= 10) address else address.take(4) + "…" + address.takeLast(4)
     }
@@ -169,6 +378,7 @@ class WalletBridgeActivity : ComponentActivity() {
         const val ICON_URI = "/favicon.ico"
         const val IDENTITY_NAME = "SeekerKeyboard"
         const val SOL_PRICE_HINT = 90.0
+        const val SKR_DECIMALS = 6
         val TWO_DECIMAL = DecimalFormat("0.00", DecimalFormatSymbols(Locale.US))
     }
 }

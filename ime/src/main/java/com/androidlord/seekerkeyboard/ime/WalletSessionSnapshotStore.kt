@@ -21,6 +21,9 @@ data class InlineStakePreview(
     val pubkey: String,
     val lamports: Long,
     val stakeState: String,
+    val delegationVote: String? = null,
+    val canStake: Boolean = false,
+    val canWithdraw: Boolean = false,
 )
 
 class WalletSessionSnapshotStore(context: Context) {
@@ -53,6 +56,9 @@ class WalletSessionSnapshotStore(context: Context) {
                             pubkey = item.optString("pubkey"),
                             lamports = item.optLong("lamports"),
                             stakeState = item.optString("stakeState"),
+                            delegationVote = item.optString("delegationVote").ifBlank { null },
+                            canStake = item.optBoolean("canStake"),
+                            canWithdraw = item.optBoolean("canWithdraw"),
                         )
                     )
                 }

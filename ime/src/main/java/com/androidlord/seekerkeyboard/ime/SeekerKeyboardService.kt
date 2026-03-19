@@ -15,15 +15,18 @@ import android.widget.FrameLayout
 
 class SeekerKeyboardService : InputMethodService() {
     private lateinit var settingsStore: KeyboardSettingsStore
+    private lateinit var draftStore: WalletActionDraftStore
     private lateinit var walletStore: WalletSessionSnapshotStore
     private lateinit var clipboardManager: ClipboardManager
     private lateinit var keyboardView: SeekerKeyboardView
     private var activePanel: UtilityPanel = UtilityPanel.NONE
     private var walletDrawerTab: WalletDrawerTab = WalletDrawerTab.OVERVIEW
+    private var selectedStakeIndex: Int = 0
 
     override fun onCreate() {
         super.onCreate()
         settingsStore = KeyboardSettingsStore(this)
+        draftStore = WalletActionDraftStore(this)
         walletStore = WalletSessionSnapshotStore(this)
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
@@ -42,7 +45,10 @@ class SeekerKeyboardService : InputMethodService() {
 
     private fun renderKeyboard() {
         val settings = settingsStore.load()
+        val walletSnapshot = walletStore.load()
         val clip = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)
+        val clipRaw = clip?.toString().orEmpty()
+        selectedStakeIndex = selectedStakeIndex.coerceIn(0, (walletSnapshot.stakeAccountsPreview.size - 1).coerceAtLeast(0))
         val clipPreview = keyboardView.clipboardPreviewFrom(
             clip,
             clipboardManager.primaryClipDescription,
@@ -52,8 +58,11 @@ class SeekerKeyboardService : InputMethodService() {
             panelState = KeyboardPanelState(
                 activePanel = activePanel,
                 walletTab = walletDrawerTab,
-                walletSnapshot = walletStore.load(),
+                walletSnapshot = walletSnapshot,
                 clipboardPreview = clipPreview,
+                clipboardRaw = clipRaw,
+                drafts = draftStore.load(),
+                selectedStakeIndex = selectedStakeIndex,
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
             ),
             onKeyPress = ::handleKeyPress,
@@ -97,6 +106,25 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:connect" -> launchWalletBridge("connect")
             action == "action:refresh" -> launchWalletBridge("refresh")
             action == "action:disconnect" -> launchWalletBridge("disconnect")
+            action == "action:send_down" -> draftStore.stepSendAmount(-0.01)
+            action == "action:send_up" -> draftStore.stepSendAmount(0.01)
+            action == "action:send" -> launchWalletBridge(
+                "send",
+                mapOf("recipient" to clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty())
+            )
+            action == "action:skr_stake_down" -> draftStore.stepSkrStakeAmount(-1)
+            action == "action:skr_stake_up" -> draftStore.stepSkrStakeAmount(1)
+            action == "action:skr_stake" -> launchWalletBridge("skr_stake")
+            action == "action:skr_unstake_down" -> draftStore.stepSkrUnstakeAmount(-1)
+            action == "action:skr_unstake_up" -> draftStore.stepSkrUnstakeAmount(1)
+            action == "action:skr_unstake" -> launchWalletBridge("skr_unstake")
+            action == "action:skr_withdraw" -> launchWalletBridge("skr_withdraw")
+            action == "action:stake_prev" -> moveSelectedStake(-1)
+            action == "action:stake_next" -> moveSelectedStake(1)
+            action == "action:native_delegate" -> launchStakeAction("native_delegate")
+            action == "action:native_deactivate" -> launchStakeAction("native_deactivate")
+            action == "action:native_withdraw" -> launchStakeAction("native_withdraw")
+            action == "action:consolidate" -> launchStakeAction("consolidate")
             action == "action:open_settings" -> launchSettingsApp()
             action == "action:switch_ime" -> launchImePicker()
             action == "action:paste" -> pasteClipboard()
@@ -110,6 +138,15 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:toggle_number" -> settingsStore.saveNumberRow(!settingsStore.load().showNumberRow)
         }
         renderKeyboard()
+    }
+
+    private fun moveSelectedStake(delta: Int) {
+        val count = walletStore.load().stakeAccountsPreview.size
+        if (count <= 0) {
+            selectedStakeIndex = 0
+            return
+        }
+        selectedStakeIndex = (selectedStakeIndex + delta).coerceIn(0, count - 1)
     }
 
     private fun togglePanel(panel: UtilityPanel) {
@@ -147,13 +184,26 @@ class SeekerKeyboardService : InputMethodService() {
         )
     }
 
-    private fun launchWalletBridge(walletAction: String) {
+    private fun launchWalletBridge(walletAction: String, extras: Map<String, String> = emptyMap()) {
         requestHideSelf(0)
         startActivity(
             Intent().apply {
                 setClassName(packageName, "com.androidlord.seekerwallet.WalletBridgeActivity")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 putExtra("wallet_action", walletAction)
+                extras.forEach { (key, value) -> putExtra(key, value) }
+            }
+        )
+    }
+
+    private fun launchStakeAction(action: String) {
+        val selected = walletStore.load().stakeAccountsPreview.getOrNull(selectedStakeIndex)
+        launchWalletBridge(
+            walletAction = action,
+            extras = buildMap {
+                put("selected_stake_pubkey", selected?.pubkey.orEmpty())
+                put("selected_stake_lamports", selected?.lamports?.toString().orEmpty())
+                put("consolidation_source_count", settingsStore.load().consolidationSourceCountPreview.toString())
             }
         )
     }

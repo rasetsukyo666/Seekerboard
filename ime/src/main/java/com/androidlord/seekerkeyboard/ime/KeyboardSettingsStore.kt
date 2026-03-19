@@ -15,6 +15,14 @@ data class KeyboardSettings(
     val keyHeightDp: Int = 52,
     val hapticsEnabled: Boolean = false,
     val consolidationSourceCountPreview: Int = 1,
+    val wallpaperUri: String = "",
+    val backgroundHex: String = "",
+    val keyHex: String = "",
+    val auxiliaryKeyHex: String = "",
+    val accentHex: String = "",
+    val utilityHex: String = "",
+    val panelHex: String = "",
+    val textHex: String = "",
 )
 
 class KeyboardSettingsStore(context: Context) {
@@ -30,6 +38,14 @@ class KeyboardSettingsStore(context: Context) {
             keyHeightDp = prefs.getInt(KEY_KEY_HEIGHT, 52).coerceIn(40, 76),
             hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, false),
             consolidationSourceCountPreview = prefs.getInt(KEY_CONSOLIDATION_SOURCES, 1).coerceIn(1, 99),
+            wallpaperUri = prefs.getString(KEY_WALLPAPER_URI, "").orEmpty(),
+            backgroundHex = prefs.getString(KEY_BACKGROUND_HEX, "").orEmpty(),
+            keyHex = prefs.getString(KEY_KEY_HEX, "").orEmpty(),
+            auxiliaryKeyHex = prefs.getString(KEY_AUXILIARY_KEY_HEX, "").orEmpty(),
+            accentHex = prefs.getString(KEY_ACCENT_HEX, "").orEmpty(),
+            utilityHex = prefs.getString(KEY_UTILITY_HEX, "").orEmpty(),
+            panelHex = prefs.getString(KEY_PANEL_HEX, "").orEmpty(),
+            textHex = prefs.getString(KEY_TEXT_HEX, "").orEmpty(),
         )
     }
 
@@ -57,6 +73,38 @@ class KeyboardSettingsStore(context: Context) {
         prefs.edit().putInt(KEY_CONSOLIDATION_SOURCES, value.coerceIn(1, 99)).apply()
     }
 
+    fun saveWallpaperUri(value: String) {
+        prefs.edit().putString(KEY_WALLPAPER_URI, value).apply()
+    }
+
+    fun saveBackgroundHex(value: String) {
+        prefs.edit().putString(KEY_BACKGROUND_HEX, value).apply()
+    }
+
+    fun saveKeyHex(value: String) {
+        prefs.edit().putString(KEY_KEY_HEX, value).apply()
+    }
+
+    fun saveAuxiliaryKeyHex(value: String) {
+        prefs.edit().putString(KEY_AUXILIARY_KEY_HEX, value).apply()
+    }
+
+    fun saveAccentHex(value: String) {
+        prefs.edit().putString(KEY_ACCENT_HEX, value).apply()
+    }
+
+    fun saveUtilityHex(value: String) {
+        prefs.edit().putString(KEY_UTILITY_HEX, value).apply()
+    }
+
+    fun savePanelHex(value: String) {
+        prefs.edit().putString(KEY_PANEL_HEX, value).apply()
+    }
+
+    fun saveTextHex(value: String) {
+        prefs.edit().putString(KEY_TEXT_HEX, value).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "seeker_keyboard_settings"
         private const val KEY_THEME = "theme"
@@ -65,5 +113,13 @@ class KeyboardSettingsStore(context: Context) {
         private const val KEY_KEY_HEIGHT = "key_height"
         private const val KEY_HAPTICS = "haptics"
         private const val KEY_CONSOLIDATION_SOURCES = "consolidation_sources"
+        private const val KEY_WALLPAPER_URI = "wallpaper_uri"
+        private const val KEY_BACKGROUND_HEX = "background_hex"
+        private const val KEY_KEY_HEX = "key_hex"
+        private const val KEY_AUXILIARY_KEY_HEX = "auxiliary_key_hex"
+        private const val KEY_ACCENT_HEX = "accent_hex"
+        private const val KEY_UTILITY_HEX = "utility_hex"
+        private const val KEY_PANEL_HEX = "panel_hex"
+        private const val KEY_TEXT_HEX = "text_hex"
     }
 }

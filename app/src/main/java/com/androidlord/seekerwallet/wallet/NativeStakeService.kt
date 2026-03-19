@@ -83,6 +83,31 @@ class NativeStakeService {
         )
     }
 
+    fun buildMergeStakeTx(
+        ownerAddress: String,
+        destinationStakeAccountAddress: String,
+        sourceStakeAccountAddress: String,
+        recentBlockhash: String,
+    ): Transaction {
+        val instruction = TransactionInstruction(
+            STAKE_PROGRAM_ID,
+            listOf(
+                AccountMeta(SolanaPublicKey(destinationStakeAccountAddress), isSigner = false, isWritable = true),
+                AccountMeta(SolanaPublicKey(sourceStakeAccountAddress), isSigner = false, isWritable = true),
+                AccountMeta(SYSVAR_CLOCK, isSigner = false, isWritable = false),
+                AccountMeta(SYSVAR_STAKE_HISTORY, isSigner = false, isWritable = false),
+                AccountMeta(SolanaPublicKey(ownerAddress), isSigner = true, isWritable = false),
+            ),
+            encodeU32(7),
+        )
+        return Transaction(
+            Message.Builder()
+                .addInstruction(instruction)
+                .setRecentBlockhash(recentBlockhash)
+                .build()
+        )
+    }
+
     companion object {
         val DEFAULT_VALIDATOR_VOTE = mapOf(
             SolanaCluster.DEVNET to "SKRuTecmFDZHjs2DxRTJNEK7m7hunKGTWJiaZ3tMVVA",
