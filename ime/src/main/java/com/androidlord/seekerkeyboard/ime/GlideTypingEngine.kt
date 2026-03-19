@@ -42,6 +42,19 @@ object GlideTypingEngine {
         )
     }
 
+    fun suggestCorrections(language: KeyboardLanguage, rawWord: String, limit: Int = 3): List<String> {
+        val normalized = normalize(rawWord)
+        if (normalized.length < 2) return emptyList()
+        return lexicon(language)
+            .distinct()
+            .map { it to score(normalized, normalize(it)) }
+            .filter { (_, score) -> score > 4 }
+            .sortedByDescending { (_, score) -> score }
+            .map { it.first }
+            .filter { it != normalized }
+            .take(limit)
+    }
+
     private fun score(path: String, candidate: String): Int {
         if (candidate.isBlank()) return Int.MIN_VALUE
         val editDistancePenalty = levenshtein(path, candidate) * 7

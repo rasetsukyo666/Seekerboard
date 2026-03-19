@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.graphics.Typeface
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -53,6 +54,7 @@ data class KeyboardPanelState(
     val clipboardRaw: String = "",
     val clipboardHistory: List<String> = emptyList(),
     val clipboardPinned: List<String> = emptyList(),
+    val suggestions: List<String> = emptyList(),
     val drafts: WalletActionDrafts = WalletActionDrafts(),
     val selectedStakeIndex: Int = 0,
     val consolidationFeeQuote: ConsolidationFeeQuote = ConsolidationFeeModel.quote(1),
@@ -76,6 +78,8 @@ class SeekerKeyboardView(
 
     private var cachedWallpaperUri: String? = null
     private var cachedWallpaper: BitmapDrawable? = null
+    private var cachedFontUri: String? = null
+    private var cachedTypeface: Typeface? = null
     private var glideActive = false
 
     init {
@@ -98,6 +102,9 @@ class SeekerKeyboardView(
         }
         if (panelState.ephemeralHint.isNotBlank()) {
             addView(buildHintStrip(panelState.ephemeralHint, settings))
+        }
+        if (settings.suggestionsEnabled && panelState.suggestions.isNotEmpty()) {
+            addView(buildSuggestionStrip(panelState.suggestions, settings, onUtilityPress))
         }
         addView(buildUtilityStrip(settings, panelState.activePanel, onUtilityPress))
         if (panelState.activePanel != UtilityPanel.NONE) {
@@ -250,11 +257,42 @@ class SeekerKeyboardView(
             this.text = text
             textSize = 12f
             gravity = Gravity.CENTER
+            typeface = resolvedTypeface(settings)
             setTextColor(foregroundColor(settings))
             setPadding(dp(10), dp(6), dp(10), dp(6))
             background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(12))
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(6)
+            }
+        }
+    }
+
+    private fun buildSuggestionStrip(
+        suggestions: List<String>,
+        settings: KeyboardSettings,
+        onUtilityPress: (String) -> Unit,
+    ): View {
+        return LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(6)
+            }
+            suggestions.forEach { suggestion ->
+                addView(
+                    Button(context).apply {
+                        text = suggestion
+                        isAllCaps = false
+                        typeface = resolvedTypeface(settings)
+                        setTextColor(foregroundColor(settings))
+                        background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(cornerRadius(settings, false)))
+                        layoutParams = LayoutParams(0, dp(36), 1f).apply {
+                            marginStart = dp(3)
+                            marginEnd = dp(3)
+                        }
+                        setOnClickListener { onUtilityPress("action:pick_suggestion:$suggestion") }
+                    }
+                )
             }
         }
     }
@@ -287,6 +325,7 @@ class SeekerKeyboardView(
                         Button(context).apply {
                             text = option
                             isAllCaps = false
+                            typeface = resolvedTypeface(settings)
                             setTextColor(foregroundColor(settings))
                             background = pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(16))
                             layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
@@ -301,6 +340,7 @@ class SeekerKeyboardView(
                     Button(context).apply {
                         text = "x"
                         isAllCaps = false
+                        typeface = resolvedTypeface(settings)
                         setTextColor(foregroundColor(settings))
                         background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(16))
                         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
@@ -344,6 +384,7 @@ class SeekerKeyboardView(
         return Button(context).apply {
             text = label
             isAllCaps = false
+            typeface = resolvedTypeface(settings)
             setTextColor(foregroundColor(settings))
             background = pillDrawable(
                 parseColorOrFallback(
@@ -407,16 +448,16 @@ class SeekerKeyboardView(
                 }
                 card.addView(panelMeta("review", if (panelState.walletSnapshot.reviewRequired) "approval handoff active" else "direct", settings))
                 card.addView(panelMeta("send", "${panelState.drafts.sendAmountSol} SOL -> ${panelState.clipboardRaw.ifBlank { "clipboard target" }.let { if (it.length > 18) shortAddress(it) else it }}", settings))
-                card.addView(panelActions(settings, listOf("connect", "refresh", "disconnect"), onUtilityPress))
-                card.addView(panelActions(settings, listOf("send_down", "send_up", "send"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("connect", "disconnect"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("send_less", "send_more", "send"), onUtilityPress))
             }
             WalletDrawerTab.STAKE -> {
                 val selectedStake = panelState.walletSnapshot.stakeAccountsPreview.getOrNull(panelState.selectedStakeIndex)
                 card.addView(panelMeta("validator", "Solana Mobile", settings))
                 card.addView(panelMeta("selected", selectedStake?.let { "${shortAddress(it.pubkey)} · ${formatLamports(it.lamports)}" } ?: "none", settings))
                 card.addView(panelMeta("skr", "${panelState.drafts.skrStakeAmount} stake · ${panelState.drafts.skrUnstakeAmount} unstake", settings))
-                card.addView(panelActions(settings, listOf("skr_stake_down", "skr_stake_up", "skr_stake"), onUtilityPress))
-                card.addView(panelActions(settings, listOf("skr_unstake_down", "skr_unstake_up", "skr_unstake"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("skr_less", "skr_more", "skr_stake"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("skr_unless", "skr_unmore", "skr_unstake"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("skr_withdraw", "stake_prev", "stake_next"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("native_delegate", "native_deactivate", "native_withdraw"), onUtilityPress))
             }
@@ -432,7 +473,7 @@ class SeekerKeyboardView(
                     val prefix = if (index == panelState.selectedStakeIndex) ">" else "•"
                     card.addView(panelText("$prefix ${shortAddress(stake.pubkey)} · ${formatLamports(stake.lamports)}", settings))
                 }
-                card.addView(panelActions(settings, listOf("stake_prev", "stake_next", "refresh"), onUtilityPress))
+                card.addView(panelActions(settings, listOf("stake_prev", "stake_next"), onUtilityPress))
                 card.addView(panelActions(settings, listOf("sources_down", "sources_up", "consolidate"), onUtilityPress))
             }
         }
@@ -462,12 +503,14 @@ class SeekerKeyboardView(
     private fun panelTitle(text: String, settings: KeyboardSettings): View = TextView(context).apply {
         this.text = text
         textSize = 16f
+        typeface = resolvedTypeface(settings)
         setTextColor(foregroundColor(settings))
     }
 
     private fun statusChip(text: String, settings: KeyboardSettings): View = TextView(context).apply {
         this.text = text
         textSize = 12f
+        typeface = resolvedTypeface(settings)
         setTextColor(foregroundColor(settings))
         background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(12))
         setPadding(dp(8), dp(5), dp(8), dp(5))
@@ -479,6 +522,7 @@ class SeekerKeyboardView(
     private fun panelText(text: String, settings: KeyboardSettings): View = TextView(context).apply {
         this.text = text
         textSize = 13f
+        typeface = resolvedTypeface(settings)
         setTextColor(foregroundColor(settings))
         setPadding(0, dp(4), 0, 0)
     }
@@ -492,7 +536,18 @@ class SeekerKeyboardView(
                 addView(
                     Button(context).apply {
                         text = action.replace('_', ' ')
+                            .replace("send less", "- send")
+                            .replace("send more", "+ send")
+                            .replace("skr less", "- skr")
+                            .replace("skr more", "+ skr")
+                            .replace("skr unless", "- unstake")
+                            .replace("skr unmore", "+ unstake")
+                            .replace("stake prev", "prev")
+                            .replace("stake next", "next")
+                            .replace("sources down", "- src")
+                            .replace("sources up", "+ src")
                         isAllCaps = false
+                        typeface = resolvedTypeface(settings)
                         setTextColor(foregroundColor(settings))
                         background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(12))
                         textSize = 12f
@@ -539,6 +594,7 @@ class SeekerKeyboardView(
         val button = Button(context).apply {
             text = displayLabel(label, panelState)
             isAllCaps = false
+            typeface = resolvedTypeface(settings)
             setTextColor(foregroundColor(settings))
             background = keyDrawable(settings, label)
             textSize = if (label.length > 1) 13f else 16f
@@ -585,7 +641,7 @@ class SeekerKeyboardView(
         onUtilityPress: (String) -> Unit,
     ) {
         val alternates = alternatesFor(settings.language)[label.lowercase()].orEmpty()
-        val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+        val touchSlop = (ViewConfiguration.get(context).scaledTouchSlop * 1.5f)
         var downX = 0f
         var downY = 0f
         var moved = false
@@ -606,7 +662,8 @@ class SeekerKeyboardView(
                     downY = event.rawY
                     moved = false
                     longTriggered = false
-                    button.postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
+                    applyPressEffect(button, settings, true)
+                    button.postDelayed(longPress, (ViewConfiguration.getLongPressTimeout() * 0.72f).toLong())
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -615,9 +672,11 @@ class SeekerKeyboardView(
                     if (!moved && abs(dx) + abs(dy) > touchSlop) {
                         moved = true
                         button.removeCallbacks(longPress)
-                        beginGlide(resolveKeyValue(label, panelState))
+                        if (settings.glideTypingEnabled) {
+                            beginGlide(resolveKeyValue(label, panelState))
+                        }
                     }
-                    if (moved) {
+                    if (moved && settings.glideTypingEnabled) {
                         glideActive = true
                         findLabelAt(event.rawX, event.rawY)?.let { addGlideLetter(resolveKeyValue(it, panelState)) }
                     }
@@ -625,9 +684,10 @@ class SeekerKeyboardView(
                 }
                 MotionEvent.ACTION_UP -> {
                     button.removeCallbacks(longPress)
+                    applyPressEffect(button, settings, false)
                     when {
                         longTriggered -> true
-                        glideActive && glidePath.isNotEmpty() -> {
+                        settings.glideTypingEnabled && glideActive && glidePath.isNotEmpty() -> {
                             finishGlide(onKeyPress, onUtilityPress)
                             true
                         }
@@ -639,6 +699,7 @@ class SeekerKeyboardView(
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     button.removeCallbacks(longPress)
+                    applyPressEffect(button, settings, false)
                     glideActive = false
                     glidePath.clear()
                     true
@@ -848,11 +909,20 @@ class SeekerKeyboardView(
 
     private fun keyDrawable(settings: KeyboardSettings, label: String): GradientDrawable {
         val radius = when (settings.layoutMode) {
-            KeyboardLayoutMode.COMPACT -> 14
-            KeyboardLayoutMode.COMFORT -> 16
-            KeyboardLayoutMode.THUMB -> if (label == "space") 24 else 18
+            KeyboardLayoutMode.COMPACT -> cornerRadius(settings, label == "space")
+            KeyboardLayoutMode.COMFORT -> cornerRadius(settings, label == "space")
+            KeyboardLayoutMode.THUMB -> cornerRadius(settings, label == "space")
         }
         return pillDrawable(keyColor(settings, label), dpFloat(radius))
+    }
+
+    private fun cornerRadius(settings: KeyboardSettings, isSpace: Boolean): Int {
+        if (settings.useSquareKeys) return if (isSpace) 10 else 8
+        return when (settings.layoutMode) {
+            KeyboardLayoutMode.COMPACT -> 14
+            KeyboardLayoutMode.COMFORT -> 16
+            KeyboardLayoutMode.THUMB -> if (isSpace) 24 else 18
+        }
     }
 
     private fun pillDrawable(color: Int, radius: Float): GradientDrawable {
@@ -925,6 +995,33 @@ class SeekerKeyboardView(
         val centerX = location[0] + view.width / 2f
         val totalWidth = width.takeIf { it > 0 }?.toFloat() ?: resources.displayMetrics.widthPixels.toFloat()
         return (centerX / totalWidth).coerceIn(0.05f, 0.95f)
+    }
+
+    private fun applyPressEffect(button: Button, settings: KeyboardSettings, pressed: Boolean) {
+        if (!settings.showPressEffect) return
+        button.animate().scaleX(if (pressed) 0.96f else 1f).scaleY(if (pressed) 0.96f else 1f).alpha(if (pressed) 0.9f else 1f).setDuration(45).start()
+    }
+
+    private fun resolvedTypeface(settings: KeyboardSettings): Typeface? {
+        return when (settings.font) {
+            KeyboardFont.SYSTEM -> Typeface.DEFAULT
+            KeyboardFont.SERIF -> Typeface.SERIF
+            KeyboardFont.MONO -> Typeface.MONOSPACE
+            KeyboardFont.ROUNDED -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            KeyboardFont.CUSTOM -> loadCustomTypeface(settings.customFontUri) ?: Typeface.DEFAULT
+        }
+    }
+
+    private fun loadCustomTypeface(uri: String): Typeface? {
+        if (uri.isBlank()) return null
+        if (cachedFontUri == uri && cachedTypeface != null) return cachedTypeface
+        cachedFontUri = uri
+        cachedTypeface = runCatching {
+            context.contentResolver.openFileDescriptor(Uri.parse(uri), "r")?.use { descriptor ->
+                Typeface.Builder(descriptor.fileDescriptor).build()
+            }
+        }.getOrNull()
+        return cachedTypeface
     }
 
     private fun dp(value: Int): Int {

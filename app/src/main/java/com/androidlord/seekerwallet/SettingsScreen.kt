@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.androidlord.seekerkeyboard.ime.KeyboardFont
 import com.androidlord.seekerkeyboard.ime.KeyboardLanguage
 import com.androidlord.seekerkeyboard.ime.KeyboardLayoutMode
 import com.androidlord.seekerkeyboard.ime.KeyboardSettingsStore
@@ -72,6 +73,19 @@ fun SettingsScreen(
                 )
             }
             settingsStore.saveWallpaperUri(uri.toString())
+            refresh()
+        }
+    }
+    val fontPicker = rememberLauncherForActivityResult(OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            settingsStore.saveCustomFontUri(uri.toString())
+            settingsStore.saveFont(KeyboardFont.CUSTOM)
             refresh()
         }
     }
@@ -129,6 +143,36 @@ fun SettingsScreen(
                 }
             }
             item {
+                SettingsCard("Fonts") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        KeyboardFont.entries.forEach { option ->
+                            AssistChip(
+                                onClick = {
+                                    settingsStore.saveFont(option)
+                                    refresh()
+                                },
+                                label = { Text(option.label) },
+                                enabled = option != settings.font,
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { fontPicker.launch(arrayOf("font/*", "application/octet-stream")) }) {
+                            Text("Choose Font")
+                        }
+                        OutlinedButton(onClick = {
+                            settingsStore.saveCustomFontUri("")
+                            if (settings.font == KeyboardFont.CUSTOM) {
+                                settingsStore.saveFont(KeyboardFont.SYSTEM)
+                            }
+                            refresh()
+                        }) {
+                            Text("Clear Font")
+                        }
+                    }
+                }
+            }
+            item {
                 SettingsCard("Language") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         KeyboardLanguage.entries.forEach { option ->
@@ -168,6 +212,26 @@ fun SettingsScreen(
                     }
                     ToggleRow("Haptics", settings.hapticsEnabled) {
                         settingsStore.saveHapticsEnabled(it)
+                        refresh()
+                    }
+                    ToggleRow("Press effect", settings.showPressEffect) {
+                        settingsStore.savePressEffect(it)
+                        refresh()
+                    }
+                    ToggleRow("Square keys", settings.useSquareKeys) {
+                        settingsStore.saveSquareKeys(it)
+                        refresh()
+                    }
+                    ToggleRow("Autocorrect", settings.autocorrectEnabled) {
+                        settingsStore.saveAutocorrectEnabled(it)
+                        refresh()
+                    }
+                    ToggleRow("Suggestions", settings.suggestionsEnabled) {
+                        settingsStore.saveSuggestionsEnabled(it)
+                        refresh()
+                    }
+                    ToggleRow("Glide typing", settings.glideTypingEnabled) {
+                        settingsStore.saveGlideTypingEnabled(it)
                         refresh()
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -12,6 +12,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
+import java.util.Locale
 
 class SeekerKeyboardService : InputMethodService() {
     private lateinit var settingsStore: KeyboardSettingsStore
@@ -29,6 +30,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var alternateOptions: List<String> = emptyList()
     private var alternateAnchorRatio: Float = 0.5f
     private var alternateReplacementLength: Int = 0
+    private var suggestions: List<String> = emptyList()
 
     override fun onCreate() {
         super.onCreate()
@@ -56,6 +58,7 @@ class SeekerKeyboardService : InputMethodService() {
         alternateOptions = emptyList()
         alternateAnchorRatio = 0.5f
         alternateReplacementLength = 0
+        suggestions = emptyList()
         ephemeralHint = ""
     }
 
@@ -64,6 +67,7 @@ class SeekerKeyboardService : InputMethodService() {
         alternateOptions = emptyList()
         alternateAnchorRatio = 0.5f
         alternateReplacementLength = 0
+        suggestions = emptyList()
         ephemeralHint = ""
     }
 
@@ -92,6 +96,7 @@ class SeekerKeyboardService : InputMethodService() {
             clip,
             clipboardManager.primaryClipDescription,
         )
+        suggestions = currentSuggestions(settings)
         keyboardView.render(
             settings = settings,
             panelState = KeyboardPanelState(
@@ -102,6 +107,7 @@ class SeekerKeyboardService : InputMethodService() {
                 clipboardRaw = clipRaw,
                 clipboardHistory = clipboardHistoryStore.load(),
                 clipboardPinned = clipboardHistoryStore.loadPinned(),
+                suggestions = suggestions,
                 drafts = draftStore.load(),
                 selectedStakeIndex = selectedStakeIndex,
                 consolidationFeeQuote = ConsolidationFeeModel.quote(settings.consolidationSourceCountPreview),
@@ -124,7 +130,10 @@ class SeekerKeyboardService : InputMethodService() {
         }
         when (key) {
             "⌫" -> inputConnection.deleteSurroundingText(1, 0)
-            "space" -> inputConnection.commitText(" ", 1)
+            "space" -> {
+                maybeAutocorrectCurrentWord(settings)
+                inputConnection.commitText(" ", 1)
+            }
             "enter" -> inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             "wallet" -> togglePanel(UtilityPanel.WALLET)
             else -> {
@@ -180,8 +189,8 @@ class SeekerKeyboardService : InputMethodService() {
             action == "action:connect" -> launchWalletBridge("connect")
             action == "action:refresh" -> launchWalletBridge("refresh")
             action == "action:disconnect" -> launchWalletBridge("disconnect")
-            action == "action:send_down" -> draftStore.stepSendAmount(-0.01)
-            action == "action:send_up" -> draftStore.stepSendAmount(0.01)
+            action == "action:send_less" -> draftStore.stepSendAmount(-0.01)
+            action == "action:send_more" -> draftStore.stepSendAmount(0.01)
             action == "action:send" -> launchWalletReview(
                 action = "send",
                 title = "Send SOL",
@@ -189,16 +198,16 @@ class SeekerKeyboardService : InputMethodService() {
                 detail = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty(),
                 extras = mapOf("recipient" to clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty())
             )
-            action == "action:skr_stake_down" -> draftStore.stepSkrStakeAmount(-1)
-            action == "action:skr_stake_up" -> draftStore.stepSkrStakeAmount(1)
+            action == "action:skr_less" -> draftStore.stepSkrStakeAmount(-1)
+            action == "action:skr_more" -> draftStore.stepSkrStakeAmount(1)
             action == "action:skr_stake" -> launchWalletReview(
                 action = "skr_stake",
                 title = "Stake SKR",
                 summary = "${draftStore.load().skrStakeAmount} SKR via official Solana Mobile stake flow",
                 detail = "Approval opens outside the keyboard and returns with synced wallet state.",
             )
-            action == "action:skr_unstake_down" -> draftStore.stepSkrUnstakeAmount(-1)
-            action == "action:skr_unstake_up" -> draftStore.stepSkrUnstakeAmount(1)
+            action == "action:skr_unless" -> draftStore.stepSkrUnstakeAmount(-1)
+            action == "action:skr_unmore" -> draftStore.stepSkrUnstakeAmount(1)
             action == "action:skr_unstake" -> launchWalletReview(
                 action = "skr_unstake",
                 title = "Unstake SKR",
@@ -243,6 +252,11 @@ class SeekerKeyboardService : InputMethodService() {
                 alternateAnchorRatio = 0.5f
                 alternateReplacementLength = 0
                 ephemeralHint = value
+            }
+            action.startsWith("action:pick_suggestion:") -> {
+                replaceCurrentWord(action.removePrefix("action:pick_suggestion:"))
+                suggestions = emptyList()
+                ephemeralHint = "suggestion applied"
             }
             action == "action:clear_alts" -> {
                 alternateOptions = emptyList()
@@ -493,6 +507,34 @@ class SeekerKeyboardService : InputMethodService() {
     private fun vibrate() {
         val vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator ?: return
         vibrator.vibrate(VibrationEffect.createOneShot(12, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun currentSuggestions(settings: KeyboardSettings): List<String> {
+        if (!settings.suggestionsEnabled) return emptyList()
+        val word = currentWordBeforeCursor()
+        return GlideTypingEngine.suggestCorrections(settings.language, word)
+    }
+
+    private fun currentWordBeforeCursor(): String {
+        val before = currentInputConnection?.getTextBeforeCursor(64, 0)?.toString().orEmpty()
+        return before.takeLastWhile { !it.isWhitespace() && it.isLetter() }.lowercase(Locale.US)
+    }
+
+    private fun maybeAutocorrectCurrentWord(settings: KeyboardSettings) {
+        if (!settings.autocorrectEnabled) return
+        val current = currentWordBeforeCursor()
+        val suggestion = GlideTypingEngine.suggestCorrections(settings.language, current, limit = 1).firstOrNull() ?: return
+        if (suggestion.equals(current, ignoreCase = true)) return
+        replaceCurrentWord(suggestion)
+        ephemeralHint = "$current -> $suggestion"
+    }
+
+    private fun replaceCurrentWord(replacement: String) {
+        val inputConnection = currentInputConnection ?: return
+        val current = currentWordBeforeCursor()
+        if (current.isBlank()) return
+        inputConnection.deleteSurroundingText(current.length, 0)
+        inputConnection.commitText(replacement, 1)
     }
 
     private fun shortStakeLabel(pubkey: String): String {

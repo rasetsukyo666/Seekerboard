@@ -8,6 +8,14 @@ enum class KeyboardTheme(val label: String) {
     GRAPHITE("Graphite"),
 }
 
+enum class KeyboardFont(val label: String) {
+    SYSTEM("System"),
+    SERIF("Serif"),
+    MONO("Mono"),
+    ROUNDED("Rounded"),
+    CUSTOM("Custom"),
+}
+
 enum class KeyboardLayoutMode(val label: String) {
     COMPACT("Compact"),
     COMFORT("Comfort"),
@@ -21,13 +29,20 @@ enum class KeyboardLanguage(val label: String) {
 }
 
 data class KeyboardSettings(
-    val theme: KeyboardTheme = KeyboardTheme.SAND,
+    val theme: KeyboardTheme = KeyboardTheme.TEAL,
     val layoutMode: KeyboardLayoutMode = KeyboardLayoutMode.COMFORT,
     val language: KeyboardLanguage = KeyboardLanguage.ENGLISH,
+    val font: KeyboardFont = KeyboardFont.SYSTEM,
+    val customFontUri: String = "",
     val showNumberRow: Boolean = true,
     val showWalletKey: Boolean = true,
     val keyHeightDp: Int = 52,
     val hapticsEnabled: Boolean = false,
+    val showPressEffect: Boolean = true,
+    val useSquareKeys: Boolean = false,
+    val autocorrectEnabled: Boolean = true,
+    val suggestionsEnabled: Boolean = true,
+    val glideTypingEnabled: Boolean = false,
     val consolidationSourceCountPreview: Int = 1,
     val wallpaperUri: String = "",
     val backgroundHex: String = "",
@@ -43,20 +58,29 @@ class KeyboardSettingsStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun load(): KeyboardSettings {
-        val theme = KeyboardTheme.entries.firstOrNull { it.name == prefs.getString(KEY_THEME, KeyboardTheme.SAND.name) }
-            ?: KeyboardTheme.SAND
+        val theme = KeyboardTheme.entries.firstOrNull { it.name == prefs.getString(KEY_THEME, KeyboardTheme.TEAL.name) }
+            ?: KeyboardTheme.TEAL
         val layoutMode = KeyboardLayoutMode.entries.firstOrNull { it.name == prefs.getString(KEY_LAYOUT_MODE, KeyboardLayoutMode.COMFORT.name) }
             ?: KeyboardLayoutMode.COMFORT
         val language = KeyboardLanguage.entries.firstOrNull { it.name == prefs.getString(KEY_LANGUAGE, KeyboardLanguage.ENGLISH.name) }
             ?: KeyboardLanguage.ENGLISH
+        val font = KeyboardFont.entries.firstOrNull { it.name == prefs.getString(KEY_FONT, KeyboardFont.SYSTEM.name) }
+            ?: KeyboardFont.SYSTEM
         return KeyboardSettings(
             theme = theme,
             layoutMode = layoutMode,
             language = language,
+            font = font,
+            customFontUri = prefs.getString(KEY_CUSTOM_FONT_URI, "").orEmpty(),
             showNumberRow = prefs.getBoolean(KEY_NUMBER_ROW, true),
             showWalletKey = prefs.getBoolean(KEY_WALLET_KEY, true),
             keyHeightDp = prefs.getInt(KEY_KEY_HEIGHT, 52).coerceIn(40, 76),
             hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, false),
+            showPressEffect = prefs.getBoolean(KEY_PRESS_EFFECT, true),
+            useSquareKeys = prefs.getBoolean(KEY_SQUARE_KEYS, false),
+            autocorrectEnabled = prefs.getBoolean(KEY_AUTOCORRECT, true),
+            suggestionsEnabled = prefs.getBoolean(KEY_SUGGESTIONS, true),
+            glideTypingEnabled = prefs.getBoolean(KEY_GLIDE_TYPING, false),
             consolidationSourceCountPreview = prefs.getInt(KEY_CONSOLIDATION_SOURCES, 1).coerceIn(1, 99),
             wallpaperUri = prefs.getString(KEY_WALLPAPER_URI, "").orEmpty(),
             backgroundHex = prefs.getString(KEY_BACKGROUND_HEX, "").orEmpty(),
@@ -81,6 +105,14 @@ class KeyboardSettingsStore(context: Context) {
         prefs.edit().putString(KEY_LANGUAGE, language.name).apply()
     }
 
+    fun saveFont(font: KeyboardFont) {
+        prefs.edit().putString(KEY_FONT, font.name).apply()
+    }
+
+    fun saveCustomFontUri(value: String) {
+        prefs.edit().putString(KEY_CUSTOM_FONT_URI, value).apply()
+    }
+
     fun saveNumberRow(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_NUMBER_ROW, enabled).apply()
     }
@@ -95,6 +127,26 @@ class KeyboardSettingsStore(context: Context) {
 
     fun saveHapticsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
+    }
+
+    fun savePressEffect(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_PRESS_EFFECT, enabled).apply()
+    }
+
+    fun saveSquareKeys(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SQUARE_KEYS, enabled).apply()
+    }
+
+    fun saveAutocorrectEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTOCORRECT, enabled).apply()
+    }
+
+    fun saveSuggestionsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SUGGESTIONS, enabled).apply()
+    }
+
+    fun saveGlideTypingEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GLIDE_TYPING, enabled).apply()
     }
 
     fun saveConsolidationSourceCountPreview(value: Int) {
@@ -138,10 +190,17 @@ class KeyboardSettingsStore(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_LAYOUT_MODE = "layout_mode"
         private const val KEY_LANGUAGE = "language"
+        private const val KEY_FONT = "font"
+        private const val KEY_CUSTOM_FONT_URI = "custom_font_uri"
         private const val KEY_NUMBER_ROW = "number_row"
         private const val KEY_WALLET_KEY = "wallet_key"
         private const val KEY_KEY_HEIGHT = "key_height"
         private const val KEY_HAPTICS = "haptics"
+        private const val KEY_PRESS_EFFECT = "press_effect"
+        private const val KEY_SQUARE_KEYS = "square_keys"
+        private const val KEY_AUTOCORRECT = "autocorrect"
+        private const val KEY_SUGGESTIONS = "suggestions"
+        private const val KEY_GLIDE_TYPING = "glide_typing"
         private const val KEY_CONSOLIDATION_SOURCES = "consolidation_sources"
         private const val KEY_WALLPAPER_URI = "wallpaper_uri"
         private const val KEY_BACKGROUND_HEX = "background_hex"
