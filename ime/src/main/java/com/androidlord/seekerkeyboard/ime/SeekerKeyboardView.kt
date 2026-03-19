@@ -70,35 +70,6 @@ private data class GlideKeyTarget(
 class SeekerKeyboardView(
     context: Context,
 ) : LinearLayout(context) {
-    private val symbolRowSpecs = listOf(
-        listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-        listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
-        listOf("shift", "*", "'", ":", ";", "!", "?", "%", "⌫"),
-    )
-    private val moreSymbolRowSpecs = listOf(
-        listOf("~", "`", "|", "•", "√", "π", "÷", "×", "{", "}"),
-        listOf("£", "€", "¥", "^", "_", "=", "[", "]", "<", ">"),
-        listOf("shift", "\\", "©", "®", "°", "…", "¿", "¡", "⌫"),
-    )
-    private val alternatesMap = mapOf(
-        "a" to listOf("á", "à", "ä", "â"),
-        "c" to listOf("ç", "ć"),
-        "e" to listOf("é", "è", "ë", "ê"),
-        "i" to listOf("í", "ì", "ï", "î"),
-        "l" to listOf("ł"),
-        "n" to listOf("ñ"),
-        "o" to listOf("ó", "ò", "ö", "ô"),
-        "s" to listOf("$", "ś"),
-        "u" to listOf("ú", "ù", "ü", "û"),
-        "y" to listOf("ý"),
-        "z" to listOf("ž", "ź"),
-        "." to listOf(",", "…"),
-        "," to listOf(";", ":"),
-        "!" to listOf("¡"),
-        "?" to listOf("¿"),
-        "\"" to listOf("'"),
-    )
-
     private val glideTargets = mutableListOf<GlideKeyTarget>()
     private val glidePath = mutableListOf<String>()
 
@@ -135,8 +106,8 @@ class SeekerKeyboardView(
         val alphaRows = alphaRows(settings.language)
         val rowSpecs = when (panelState.keyboardLayer) {
             KeyboardLayer.ALPHA -> alphaRows
-            KeyboardLayer.SYMBOLS -> symbolRowSpecs
-            KeyboardLayer.MORE_SYMBOLS -> moreSymbolRowSpecs
+            KeyboardLayer.SYMBOLS -> symbolRows(settings.language)
+            KeyboardLayer.MORE_SYMBOLS -> moreSymbolRows(settings.language)
         }
         if (settings.showNumberRow && panelState.keyboardLayer == KeyboardLayer.ALPHA) {
             addView(buildRow(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), settings, panelState, 0, onKeyPress, onUtilityPress))
@@ -182,6 +153,97 @@ class SeekerKeyboardView(
         }
     }
 
+    private fun symbolRows(language: KeyboardLanguage): List<List<String>> {
+        return when (language) {
+            KeyboardLanguage.ENGLISH -> listOf(
+                listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+                listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
+                listOf("shift", "*", "'", ":", ";", "!", "?", "%", "⌫"),
+            )
+            KeyboardLanguage.SPANISH -> listOf(
+                listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+                listOf("@", "#", "€", "&", "-", "+", "(", ")", "/", "\""),
+                listOf("shift", "*", "'", ":", ";", "¡", "¿", "%", "⌫"),
+            )
+            KeyboardLanguage.PORTUGUESE -> listOf(
+                listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+                listOf("@", "#", "$", "&", "-", "+", "(", ")", "/", "\""),
+                listOf("shift", "*", "'", ":", ";", "!", "?", "º", "⌫"),
+            )
+        }
+    }
+
+    private fun moreSymbolRows(language: KeyboardLanguage): List<List<String>> {
+        return when (language) {
+            KeyboardLanguage.ENGLISH -> listOf(
+                listOf("~", "`", "|", "•", "√", "π", "÷", "×", "{", "}"),
+                listOf("£", "€", "¥", "^", "_", "=", "[", "]", "<", ">"),
+                listOf("shift", "\\", "©", "®", "°", "…", "¿", "¡", "⌫"),
+            )
+            KeyboardLanguage.SPANISH -> listOf(
+                listOf("~", "`", "|", "•", "√", "π", "÷", "×", "{", "}"),
+                listOf("£", "€", "¥", "^", "_", "=", "[", "]", "«", "»"),
+                listOf("shift", "\\", "©", "®", "°", "…", "!", "?", "⌫"),
+            )
+            KeyboardLanguage.PORTUGUESE -> listOf(
+                listOf("~", "`", "|", "•", "√", "π", "÷", "×", "{", "}"),
+                listOf("£", "€", "¥", "^", "_", "=", "[", "]", "<", ">"),
+                listOf("shift", "\\", "©", "®", "°", "…", "ª", "§", "⌫"),
+            )
+        }
+    }
+
+    private fun alternatesFor(language: KeyboardLanguage): Map<String, List<String>> {
+        val punctuation = when (language) {
+            KeyboardLanguage.ENGLISH -> mapOf(
+                "." to listOf(",", "…"),
+                "," to listOf(";", ":"),
+                "!" to listOf("?"),
+                "?" to listOf("!"),
+                "\"" to listOf("'"),
+            )
+            KeyboardLanguage.SPANISH -> mapOf(
+                "a" to listOf("á", "à"),
+                "e" to listOf("é", "è"),
+                "i" to listOf("í", "ï"),
+                "n" to listOf("ñ"),
+                "o" to listOf("ó", "ò"),
+                "u" to listOf("ú", "ü"),
+                "." to listOf(",", "…"),
+                "," to listOf(";", ":"),
+                "!" to listOf("¡"),
+                "?" to listOf("¿"),
+                "\"" to listOf("«", "»", "'"),
+            )
+            KeyboardLanguage.PORTUGUESE -> mapOf(
+                "a" to listOf("á", "à", "â", "ã"),
+                "c" to listOf("ç"),
+                "e" to listOf("é", "ê"),
+                "i" to listOf("í"),
+                "o" to listOf("ó", "ô", "õ"),
+                "u" to listOf("ú"),
+                "." to listOf(",", "…"),
+                "," to listOf(";", ":"),
+                "!" to listOf("?"),
+                "?" to listOf("!"),
+                "\"" to listOf("'"),
+            )
+        }
+        val shared = mapOf(
+            "a" to listOf("á", "à", "ä", "â"),
+            "c" to listOf("ç", "ć"),
+            "e" to listOf("é", "è", "ë", "ê"),
+            "i" to listOf("í", "ì", "ï", "î"),
+            "l" to listOf("ł"),
+            "o" to listOf("ó", "ò", "ö", "ô"),
+            "s" to listOf("$", "ś"),
+            "u" to listOf("ú", "ù", "ü", "û"),
+            "y" to listOf("ý"),
+            "z" to listOf("ž", "ź"),
+        )
+        return shared + punctuation
+    }
+
     private fun buildHintStrip(text: String, settings: KeyboardSettings): View {
         return TextView(context).apply {
             this.text = text
@@ -213,34 +275,41 @@ class SeekerKeyboardView(
             addView(Space(context).apply {
                 layoutParams = LayoutParams(0, 0, leftWeight)
             })
-            options.forEach { option ->
+            addView(LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                background = pillDrawable(parseColorOrFallback(settings.panelHex, panelColor(settings.theme)), dpFloat(18))
+                layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                options.forEach { option ->
+                    addView(
+                        Button(context).apply {
+                            text = option
+                            isAllCaps = false
+                            setTextColor(foregroundColor(settings))
+                            background = pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(16))
+                            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
+                                marginStart = dp(3)
+                                marginEnd = dp(3)
+                            }
+                            setOnClickListener { onUtilityPress("action:pick_alt:$option") }
+                        }
+                    )
+                }
                 addView(
                     Button(context).apply {
-                        text = option
+                        text = "x"
                         isAllCaps = false
                         setTextColor(foregroundColor(settings))
-                        background = pillDrawable(parseColorOrFallback(settings.accentHex, accentColor(settings.theme)), dpFloat(14))
-                        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(38)).apply {
-                            marginStart = dp(2)
-                            marginEnd = dp(2)
+                        background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(16))
+                        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
+                            marginStart = dp(3)
+                            marginEnd = dp(3)
                         }
-                        setOnClickListener { onUtilityPress("action:pick_alt:$option") }
+                        setOnClickListener { onUtilityPress("action:clear_alts") }
                     }
                 )
-            }
-            addView(
-                Button(context).apply {
-                    text = "x"
-                    isAllCaps = false
-                    setTextColor(foregroundColor(settings))
-                    background = pillDrawable(parseColorOrFallback(settings.utilityHex, mutedUtilityColor(settings.theme)), dpFloat(14))
-                    layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, dp(38)).apply {
-                        marginStart = dp(2)
-                        marginEnd = dp(2)
-                    }
-                    setOnClickListener { onUtilityPress("action:clear_alts") }
-                }
-            )
+            })
             addView(Space(context).apply {
                 layoutParams = LayoutParams(0, 0, rightWeight)
             })
@@ -451,6 +520,7 @@ class SeekerKeyboardView(
         onKeyPress: (String) -> Unit,
         onUtilityPress: (String) -> Unit,
     ): View {
+        val alternatesMap = alternatesFor(settings.language)
         val button = Button(context).apply {
             text = displayLabel(label, panelState)
             isAllCaps = false
@@ -499,7 +569,7 @@ class SeekerKeyboardView(
         onKeyPress: (String) -> Unit,
         onUtilityPress: (String) -> Unit,
     ) {
-        val alternates = alternatesMap[label].orEmpty()
+        val alternates = alternatesFor(settings.language)[label.lowercase()].orEmpty()
         val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
         var downX = 0f
         var downY = 0f

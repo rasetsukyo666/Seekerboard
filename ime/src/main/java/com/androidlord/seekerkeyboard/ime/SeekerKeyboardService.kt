@@ -28,6 +28,7 @@ class SeekerKeyboardService : InputMethodService() {
     private var ephemeralHint: String = ""
     private var alternateOptions: List<String> = emptyList()
     private var alternateAnchorRatio: Float = 0.5f
+    private var alternateReplacementLength: Int = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -54,6 +55,7 @@ class SeekerKeyboardService : InputMethodService() {
         super.onFinishInputView(finishingInput)
         alternateOptions = emptyList()
         alternateAnchorRatio = 0.5f
+        alternateReplacementLength = 0
         ephemeralHint = ""
     }
 
@@ -61,6 +63,7 @@ class SeekerKeyboardService : InputMethodService() {
         super.onWindowHidden()
         alternateOptions = emptyList()
         alternateAnchorRatio = 0.5f
+        alternateReplacementLength = 0
         ephemeralHint = ""
     }
 
@@ -125,19 +128,32 @@ class SeekerKeyboardService : InputMethodService() {
             "wallet" -> togglePanel(UtilityPanel.WALLET)
             else -> {
                 if (key.startsWith("glide:")) {
-                    val word = key.removePrefix("glide:")
-                    inputConnection.commitText(word, 1)
-                    ephemeralHint = "glide $word"
+                    val resolution = GlideTypingEngine.resolve(settings.language, key.removePrefix("glide:"))
+                    inputConnection.commitText(resolution.committedText, 1)
+                    val suggestions = resolution.suggestions.filter { it != resolution.committedText }
+                    alternateOptions = suggestions
+                    alternateAnchorRatio = 0.5f
+                    alternateReplacementLength = resolution.committedText.length
+                    ephemeralHint = if (resolution.committedText == resolution.rawPath || resolution.rawPath.isBlank()) {
+                        "glide ${resolution.committedText}"
+                    } else {
+                        "glide ${resolution.rawPath} -> ${resolution.committedText}"
+                    }
                 } else {
                     inputConnection.commitText(key, 1)
+                    alternateReplacementLength = 0
                 }
             }
         }
         if (key !in setOf("wallet")) {
-            alternateOptions = emptyList()
+            if (!key.startsWith("glide:")) {
+                alternateOptions = emptyList()
+                alternateReplacementLength = 0
+            }
         }
         if (key == "space") {
             ephemeralHint = ""
+            alternateReplacementLength = 0
         }
         if (key !in setOf("⌫", "space", "enter", "wallet") && shiftState == ShiftState.ONCE && keyboardLayer == KeyboardLayer.ALPHA) {
             shiftState = ShiftState.OFF
@@ -191,20 +207,28 @@ class SeekerKeyboardService : InputMethodService() {
                 val ratio = if (firstSeparator > 0) payload.substring(0, firstSeparator).toFloatOrNull() ?: 0.5f else 0.5f
                 val items = if (firstSeparator > 0) payload.substring(firstSeparator + 1) else payload
                 alternateAnchorRatio = ratio
+                alternateReplacementLength = 0
                 alternateOptions = items.split('|')
                     .filter { it.isNotBlank() }
                 ephemeralHint = "pick alternate"
             }
             action.startsWith("action:pick_alt:") -> {
                 val value = action.removePrefix("action:pick_alt:")
-                currentInputConnection?.commitText(value, 1)
+                currentInputConnection?.let { inputConnection ->
+                    if (alternateReplacementLength > 0) {
+                        inputConnection.deleteSurroundingText(alternateReplacementLength, 0)
+                    }
+                    inputConnection.commitText(value, 1)
+                }
                 alternateOptions = emptyList()
                 alternateAnchorRatio = 0.5f
+                alternateReplacementLength = 0
                 ephemeralHint = value
             }
             action == "action:clear_alts" -> {
                 alternateOptions = emptyList()
                 alternateAnchorRatio = 0.5f
+                alternateReplacementLength = 0
                 ephemeralHint = ""
             }
             action == "action:open_settings" -> launchSettingsApp()
@@ -251,6 +275,7 @@ class SeekerKeyboardService : InputMethodService() {
         }
         shiftState = ShiftState.OFF
         alternateOptions = emptyList()
+        alternateReplacementLength = 0
     }
 
     private fun moveSelectedStake(delta: Int) {
@@ -312,6 +337,7 @@ class SeekerKeyboardService : InputMethodService() {
         currentInputConnection?.commitText(item, 1)
         ephemeralHint = "pasted history ${index + 1}"
         alternateOptions = emptyList()
+        alternateReplacementLength = 0
     }
 
     private fun moveCursor(delta: Int) {
