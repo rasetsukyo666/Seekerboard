@@ -348,7 +348,7 @@ class SeekerKeyboardView(
             }
             addView(
                 Button(context).apply {
-                    text = if (panelState.topStripMode == TopStripMode.SUGGESTIONS) "⌄" else "abc"
+                    text = if (panelState.topStripMode == TopStripMode.SUGGESTIONS) "+" else "<"
                     isAllCaps = false
                     typeface = resolvedTypeface(settings)
                     setTextColor(Color.BLACK)
@@ -729,6 +729,20 @@ class SeekerKeyboardView(
         onUtilityPress: (String) -> Unit,
     ) {
         val alternates = alternatesFor(settings.language)[label.lowercase()].orEmpty()
+        if (!settings.glideTypingEnabled) {
+            button.setOnClickListener {
+                onKeyPress(resolveKeyValue(label, panelState))
+            }
+            if (alternates.isNotEmpty()) {
+                button.setOnLongClickListener {
+                    dismissKeyPreview()
+                    onUtilityPress("action:show_alts:${anchorRatioFor(button)}:${alternates.joinToString("|")}")
+                    true
+                }
+            }
+            button.setOnTouchListener(previewTouchListener(button, settings, resolveKeyValue(label, panelState)))
+            return
+        }
         val touchSlop = (ViewConfiguration.get(context).scaledTouchSlop * 1.5f)
         var downX = 0f
         var downY = 0f
@@ -891,6 +905,10 @@ class SeekerKeyboardView(
             private var repeating = false
             private val repeatDelete = object : Runnable {
                 override fun run() {
+                    if (!button.isAttachedToWindow) {
+                        repeating = false
+                        return
+                    }
                     repeating = true
                     consumed = true
                     onUtilityPress("action:delete_char")
@@ -904,6 +922,7 @@ class SeekerKeyboardView(
                         downX = event.x
                         consumed = false
                         repeating = false
+                        repeatHandler.removeCallbacks(repeatDelete)
                         applyPressEffect(button, settings, true)
                         showKeyPreview(button, "⌫", settings)
                         repeatHandler.postDelayed(repeatDelete, 350L)
@@ -960,6 +979,12 @@ class SeekerKeyboardView(
             }
             false
         }
+    }
+
+    override fun onDetachedFromWindow() {
+        repeatHandler.removeCallbacksAndMessages(null)
+        dismissKeyPreview()
+        super.onDetachedFromWindow()
     }
 
     private fun displayLabel(label: String, panelState: KeyboardPanelState): String {

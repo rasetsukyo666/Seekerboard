@@ -54,29 +54,30 @@ object GlideTypingEngine {
         if (normalized.isBlank()) {
             return nextWordSuggestions(language, previous, limit)
         }
+        if (normalized.length == 1) {
+            return words
+                .filter { it.startsWith(normalized) && it != normalized }
+                .sortedWith(compareBy<String>({ it.length }, { it }))
+                .map { applyOriginalCase(rawWord, it) }
+                .take(limit)
+        }
 
         val prefixMatches = words
             .filter { it.startsWith(normalized) && it != normalized }
             .sortedWith(compareBy<String>({ prefixDistance(normalized, it) }, { it.length }, { it }))
 
-        val infixMatches = words
-            .filter { !it.startsWith(normalized) && it.contains(normalized) }
-            .sortedWith(compareBy<String>({ it.length }, { it }))
-
         val fuzzyMatches = words
             .map { it to score(normalized, normalize(it)) }
             .filter { (word, score) ->
                 word != normalized &&
-                    score > when {
-                        normalized.length <= 1 -> 18
-                        normalized.length == 2 -> 14
-                        else -> 9
-                    }
+                    score >= 24 &&
+                    levenshtein(normalized, normalize(word)) <= 1 &&
+                    normalize(word).firstOrNull() == normalized.firstOrNull()
             }
             .sortedByDescending { (_, score) -> score }
             .map { it.first }
 
-        return (prefixMatches + infixMatches + fuzzyMatches)
+        return (prefixMatches + fuzzyMatches)
             .distinct()
             .map { applyOriginalCase(rawWord, it) }
             .take(limit)

@@ -589,6 +589,7 @@ class SeekerKeyboardService : InputMethodService() {
     private fun currentSuggestions(settings: KeyboardSettings): List<String> {
         if (!settings.suggestionsEnabled) return emptyList()
         val (currentWord, previousWord) = currentWordContext()
+        if (currentWord.length == 1 && !currentWord[0].isLetter()) return emptyList()
         return GlideTypingEngine.suggestCorrections(settings.language, currentWord, previousWord)
     }
 
@@ -628,7 +629,8 @@ class SeekerKeyboardService : InputMethodService() {
     private fun shouldRenderAfterKey(key: String, settings: KeyboardSettings): Boolean {
         if (activePanel != UtilityPanel.NONE) return true
         if (alternateOptions.isNotEmpty()) return true
-        if (settings.suggestionsEnabled || settings.autocorrectEnabled) return true
+        if (settings.suggestionsEnabled && topStripMode == TopStripMode.SUGGESTIONS && key.length == 1) return true
+        if (settings.autocorrectEnabled) return true
         if (key == "wallet" || key == "emoji" || key == "space" || key == "enter" || key == "⌫") return true
         if (key.startsWith("glide:")) return true
         return shiftState == ShiftState.ONCE
