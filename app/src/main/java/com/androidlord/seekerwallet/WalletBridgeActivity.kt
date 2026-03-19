@@ -23,10 +23,6 @@ import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
 import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
-import com.solana.publickey.SolanaPublicKey
-import com.solana.transaction.Message
-import com.solana.transaction.SystemProgram
-import com.solana.transaction.Transaction
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -127,17 +123,11 @@ class WalletBridgeActivity : ComponentActivity() {
         require(recipient.isNotBlank()) { "Copy a destination wallet address to the clipboard first." }
         require(amountLamports > 0L) { "Invalid SOL send amount." }
 
-        val tx = Transaction(
-            Message.Builder()
-                .addInstruction(
-                    SystemProgram.transfer(
-                        SolanaPublicKey(address),
-                        SolanaPublicKey(recipient),
-                        amountLamports,
-                    )
-                )
-                .setRecentBlockhash(rpcService.getLatestBlockhash(sessionStore.loadCluster().rpcUrl))
-                .build()
+        val tx = nativeStakeService.buildTransferTx(
+            fromAddress = address,
+            toAddress = recipient,
+            lamports = amountLamports,
+            recentBlockhash = rpcService.getLatestBlockhash(sessionStore.loadCluster().rpcUrl),
         )
         submitSerializedTransactions(arrayOf(tx.serialize()), "Sent $amountSol SOL to ${shortAddress(recipient)}.")
     }
@@ -298,14 +288,12 @@ class WalletBridgeActivity : ComponentActivity() {
             signAndSendTransactions(serializedTransactions)
         }) {
             is TransactionResult.Success -> {
-                val signature = result.successPayload?.signatures?.firstOrNull()?.let(Base58::encodeToString)
                 sessionStore.loadWalletAddress()?.let { refreshSnapshot(it, sessionStore.loadCluster()) }
                 sessionStore.saveReviewState(reviewRequired = true, lastReviewedAction = successMessage)
                 sessionStore.saveKeyboardStatus(
                     buildString {
                         append(successMessage)
                         feeLabel?.takeIf { it.isNotBlank() }?.let { append(" Fee: $it") }
-                        signature?.let { append(" Sig ${shortAddress(it)}") }
                     }
                 )
             }

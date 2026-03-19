@@ -53,7 +53,7 @@ jobs:
           path: |
             app/build/reports/**
             app/build/outputs/logs/**
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   ime:
     runs-on: ubuntu-latest
@@ -82,8 +82,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: seekerkeyboard-ime-debug
-          path: ime/build/outputs/aar/*.aar
-          if-no-files-found: warn
+          path: ime/build/outputs/**/*.aar
+          if-no-files-found: ignore
 
       - name: Upload ime reports
         if: always()
@@ -93,7 +93,7 @@ jobs:
           path: |
             ime/build/reports/**
             ime/build/outputs/logs/**
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   qa-notes:
     runs-on: ubuntu-latest
