@@ -17,7 +17,7 @@ android {
     val releaseStoreType = System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
 
     defaultConfig {
-        applicationId = "helium314.keyboard"
+        applicationId = "com.rasetsukyo.seekerboard"
         minSdk = 24
         targetSdk = 35
         versionCode = 3900
