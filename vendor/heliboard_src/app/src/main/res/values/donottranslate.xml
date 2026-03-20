@@ -72,6 +72,6 @@
 
     <string name="english_ime_name" translatable="false">SeekerKeyboard</string>
     <!-- App slogan-->
-    <string name="app_slogan" translatable="false">Private keyboard with Seeker wallet integration in progress.</string>
+    <string name="app_slogan" translatable="false">Privacy-first keyboard with optional Solana wallet actions.</string>
 
 </resources>

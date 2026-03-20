@@ -1094,7 +1094,7 @@ New dictionary:
     <string name="gesture_data_links">Information on gesture data gathering on:</string>
 
     <string name="seeker_wallet_title">Solana Wallet</string>
-    <string name="seeker_wallet_summary">V1 keeps the wallet simple: Solana connect, send, and receive. Fees and staking stay out of the primary flow for now.</string>
+    <string name="seeker_wallet_summary">Typing stays local and private-first. Solana network access is only used when you explicitly open wallet features like connect, send, or receive.</string>
     <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. V1 is connect, send, and receive only.</string>
     <string name="seeker_wallet_status_connect">Wallet connect is the first Seeker bridge to wire here for v1.</string>
     <string name="seeker_wallet_status_send">Send will be the first Solana action after connect in v1.</string>
