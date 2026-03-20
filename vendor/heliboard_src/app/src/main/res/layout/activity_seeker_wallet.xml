@@ -37,6 +37,25 @@
             android:textColor="#E8FFF9"
             android:textSize="15sp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/seeker_wallet_address_label"
+            android:textColor="#14F195"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/wallet_address"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#11211E"
+            android:padding="16dp"
+            android:textColor="#E8FFF9"
+            android:textSize="14sp" />
+
         <Button
             android:id="@+id/wallet_connect"
             android:layout_width="match_parent"
@@ -50,6 +69,33 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="@string/seeker_wallet_send" />
+
+        <EditText
+            android:id="@+id/wallet_send_recipient"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:autofillHints=""
+            android:background="#11211E"
+            android:hint="@string/seeker_wallet_send_recipient_hint"
+            android:inputType="textNoSuggestions"
+            android:padding="16dp"
+            android:textColor="#E8FFF9"
+            android:textColorHint="#FF9945FF" />
+
+        <EditText
+            android:id="@+id/wallet_send_amount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:autofillHints=""
+            android:background="#11211E"
+            android:hint="@string/seeker_wallet_send_amount_hint"
+            android:inputType="numberDecimal"
+            android:padding="16dp"
+            android:text="0.01"
+            android:textColor="#E8FFF9"
+            android:textColorHint="#FF9945FF" />
 
         <Button
             android:id="@+id/wallet_receive"

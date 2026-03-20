@@ -1098,10 +1098,22 @@ New dictionary:
     <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. V1 is connect, send, and receive only.</string>
     <string name="seeker_wallet_status_connect">Wallet connect is the first Seeker bridge to wire here for v1.</string>
     <string name="seeker_wallet_status_send">Send will be the first Solana action after connect in v1.</string>
-    <string name="seeker_wallet_status_receive">Receive will expose the Solana address and quick copy/share path in v1.</string>
+    <string name="seeker_wallet_status_receive">Copied %1$s to clipboard.</string>
+    <string name="seeker_wallet_status_connected">Connected %1$s.</string>
+    <string name="seeker_wallet_status_need_connect">Connect a Solana wallet first.</string>
+    <string name="seeker_wallet_status_no_wallet">No Mobile Wallet Adapter wallet found on this device.</string>
+    <string name="seeker_wallet_status_connect_failed">Wallet connect failed: %1$s</string>
+    <string name="seeker_wallet_status_invalid_recipient">Enter a valid recipient address.</string>
+    <string name="seeker_wallet_status_invalid_amount">Enter a valid SOL amount.</string>
+    <string name="seeker_wallet_status_send_success">Sent %1$s SOL to %2$s.</string>
+    <string name="seeker_wallet_status_send_failed">Send failed: %1$s</string>
     <string name="seeker_wallet_connect">Connect Wallet</string>
     <string name="seeker_wallet_send">Send</string>
     <string name="seeker_wallet_receive">Receive</string>
+    <string name="seeker_wallet_address_label">Connected Address</string>
+    <string name="seeker_wallet_not_connected">No wallet connected</string>
+    <string name="seeker_wallet_send_recipient_hint">Recipient address</string>
+    <string name="seeker_wallet_send_amount_hint">Amount in SOL</string>
     <string name="seeker_wallet_close">Back To Keyboard</string>
 
     <!-- new strings should go above the section for gesture data gathering -->
