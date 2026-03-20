@@ -1,4 +1,4 @@
-name: APK Release HeliBoard Pivot
+name: APK Release SeekerKeyboard QA
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: apk-release-heliboard-pivot-${{ github.ref }}
+  group: apk-release-seekerkeyboard-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,20 +30,26 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
 
-      - name: Build HeliBoard-based debug APK
+      - name: Build SeekerKeyboard QA APK
         working-directory: vendor/heliboard_src
         run: ./gradlew :app:assembleDebugNoMinify --stacktrace
 
+      - name: Normalize APK name
+        working-directory: vendor/heliboard_src/app/build/outputs/apk/debugNoMinify
+        run: |
+          apk_path="$(ls -1 *.apk | head -n 1)"
+          mv "$apk_path" "SeekerKeyboard_qa.apk"
+
       - name: Create release tag
         id: tag
-        run: echo "tag_name=heliboard-pivot-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+        run: echo "tag_name=seekerkeyboard-qa-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Publish APK release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: SeekerKeyboard HeliBoard Pivot ${{ steps.tag.outputs.tag_name }}
+          name: SeekerKeyboard QA ${{ steps.tag.outputs.tag_name }}
           target_commitish: ${{ github.sha }}
           prerelease: true
           generate_release_notes: false
-          files: vendor/heliboard_src/app/build/outputs/apk/debugNoMinify/*.apk
+          files: vendor/heliboard_src/app/build/outputs/apk/debugNoMinify/SeekerKeyboard_qa.apk
