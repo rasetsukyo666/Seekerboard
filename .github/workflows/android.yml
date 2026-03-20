@@ -44,6 +44,12 @@ jobs:
           apk_path="$(ls -1 *.apk | head -n 1)"
           mv "$apk_path" "Seekerboard_qa.apk"
 
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Seekerboard_qa
+          path: vendor/heliboard_src/app/build/outputs/apk/debugNoMinify/Seekerboard_qa.apk
+
       - name: Create release tag
         id: tag
         run: echo "tag_name=seekerboard-qa-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
