@@ -1111,6 +1111,7 @@ New dictionary:
     <string name="seeker_wallet_status_invalid_recipient">Enter a valid recipient address.</string>
     <string name="seeker_wallet_status_invalid_amount">Enter a valid SOL amount.</string>
     <string name="seeker_wallet_status_send_success">Sent %1$s SOL to %2$s.</string>
+    <string name="seeker_wallet_status_send_success_resolved_target">%1$s (%2$s)</string>
     <string name="seeker_wallet_status_send_failed">Send failed: %1$s</string>
     <string name="seeker_wallet_connect">Connect Wallet</string>
     <string name="seeker_wallet_send">Send</string>

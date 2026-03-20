@@ -25,6 +25,7 @@ class SeekerWalletActivity : ComponentActivity() {
     private lateinit var activityResultSender: ActivityResultSender
     private val rpcService = SeekerSolanaRpcService()
     private val transferService = SeekerTransferService()
+    private val snsResolver = SeekerSnsResolver()
 
     private val walletAdapter by lazy {
         MobileWalletAdapter(
@@ -145,10 +146,10 @@ class SeekerWalletActivity : ComponentActivity() {
             return
         }
 
-        val recipient = findViewById<EditText>(R.id.wallet_send_recipient).text.toString().trim()
+        val recipientInput = findViewById<EditText>(R.id.wallet_send_recipient).text.toString().trim()
         val amountSol = findViewById<EditText>(R.id.wallet_send_amount).text.toString().trim()
         val amountLamports = amountSol.toDoubleOrNull()?.times(LAMPORTS_PER_SOL)?.toLong() ?: 0L
-        if (recipient.isBlank()) {
+        if (recipientInput.isBlank()) {
             updateStatus(getString(R.string.seeker_wallet_status_invalid_recipient))
             return
         }
@@ -159,6 +160,7 @@ class SeekerWalletActivity : ComponentActivity() {
 
         setBusy(true)
         try {
+            val recipient = snsResolver.resolveRecipient(recipientInput)
             val cluster = sessionStore.loadCluster()
             val recentBlockhash = rpcService.getLatestBlockhash(cluster.rpcUrl)
             val tx = transferService.buildTransferTx(
@@ -175,7 +177,12 @@ class SeekerWalletActivity : ComponentActivity() {
                         sessionStore.saveAuthToken(it)
                         walletAdapter.authToken = it
                     }
-                    updateStatus(getString(R.string.seeker_wallet_status_send_success, amountSol, shortAddress(recipient)))
+                    val sentTo = if (recipientInput.equals(recipient, ignoreCase = true)) {
+                        shortAddress(recipient)
+                    } else {
+                        getString(R.string.seeker_wallet_status_send_success_resolved_target, recipientInput, shortAddress(recipient))
+                    }
+                    updateStatus(getString(R.string.seeker_wallet_status_send_success, amountSol, sentTo))
                 }
                 is TransactionResult.NoWalletFound -> {
                     updateStatus(getString(R.string.seeker_wallet_status_no_wallet))
