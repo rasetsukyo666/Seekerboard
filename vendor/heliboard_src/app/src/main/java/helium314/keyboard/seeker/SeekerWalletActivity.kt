@@ -58,6 +58,11 @@ class SeekerWalletActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        bindCurrentSession()
+    }
+
     private fun bindButton(id: Int, action: () -> Unit) {
         findViewById<Button>(id).setOnClickListener { view ->
             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -67,7 +72,10 @@ class SeekerWalletActivity : ComponentActivity() {
 
     private fun bindCurrentSession() {
         val address = sessionStore.loadWalletAddress()
+        val cluster = sessionStore.loadCluster()
+        findViewById<TextView>(R.id.wallet_cluster).text = cluster.label
         updateAddress(address)
+        updateConnectedState(address.isNullOrBlank().not())
         updateStatus(
             if (address.isNullOrBlank()) {
                 getString(R.string.seeker_wallet_status_ready)
@@ -75,6 +83,13 @@ class SeekerWalletActivity : ComponentActivity() {
                 getString(R.string.seeker_wallet_status_connected, shortAddress(address))
             }
         )
+        if (address.isNullOrBlank()) {
+            updateBalance(null)
+        } else {
+            lifecycleScope.launch {
+                refreshBalance(address, cluster)
+            }
+        }
     }
 
     private suspend fun connectWallet() {
@@ -94,6 +109,8 @@ class SeekerWalletActivity : ComponentActivity() {
                     sessionStore.saveAuthToken(result.authResult.authToken)
                     walletAdapter.authToken = result.authResult.authToken
                     updateAddress(address)
+                    updateConnectedState(true)
+                    refreshBalance(address, sessionStore.loadCluster())
                     updateStatus(getString(R.string.seeker_wallet_status_connected, shortAddress(address)))
                 }
                 is TransactionResult.NoWalletFound -> {
@@ -178,14 +195,38 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<TextView>(R.id.wallet_address).text = address ?: getString(R.string.seeker_wallet_not_connected)
     }
 
+    private fun updateBalance(balanceLamports: Long?) {
+        val balanceText = if (balanceLamports == null) {
+            getString(R.string.seeker_wallet_balance_placeholder)
+        } else {
+            String.format("%.4f SOL", balanceLamports / LAMPORTS_PER_SOL)
+        }
+        findViewById<TextView>(R.id.wallet_balance).text = balanceText
+    }
+
     private fun updateStatus(status: String) {
         findViewById<TextView>(R.id.wallet_status).text = status
     }
 
+    private fun updateConnectedState(isConnected: Boolean) {
+        findViewById<Button>(R.id.wallet_connect).visibility = if (isConnected) View.GONE else View.VISIBLE
+    }
+
     private fun setBusy(isBusy: Boolean) {
-        findViewById<Button>(R.id.wallet_connect).isEnabled = !isBusy
+        val connectButton = findViewById<Button>(R.id.wallet_connect)
+        if (connectButton.visibility == View.VISIBLE) {
+            connectButton.isEnabled = !isBusy
+        }
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_receive).isEnabled = !isBusy
+    }
+
+    private suspend fun refreshBalance(address: String, cluster: SolanaCluster) {
+        try {
+            updateBalance(rpcService.getBalance(cluster.rpcUrl, address))
+        } catch (_: Throwable) {
+            updateBalance(null)
+        }
     }
 
     private fun shortAddress(address: String): String {

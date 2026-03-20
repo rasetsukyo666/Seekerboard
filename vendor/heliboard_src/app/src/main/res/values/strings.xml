@@ -1116,6 +1116,9 @@ New dictionary:
     <string name="seeker_wallet_send">Send</string>
     <string name="seeker_wallet_receive">Receive</string>
     <string name="seeker_wallet_address_label">Connected Address</string>
+    <string name="seeker_wallet_balance_label">Balance</string>
+    <string name="seeker_wallet_balance_placeholder">--</string>
+    <string name="seeker_wallet_cluster_label">Cluster</string>
     <string name="seeker_wallet_not_connected">No wallet connected</string>
     <string name="seeker_wallet_send_recipient_hint">Recipient address</string>
     <string name="seeker_wallet_send_amount_hint">Amount in SOL</string>

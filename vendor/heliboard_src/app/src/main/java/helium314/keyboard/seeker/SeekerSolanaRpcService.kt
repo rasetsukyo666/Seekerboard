@@ -21,6 +21,18 @@ class SeekerSolanaRpcService {
             .getString("blockhash")
     }
 
+    suspend fun getBalance(rpcUrl: String, address: String): Long = withContext(Dispatchers.IO) {
+        val response = post(
+            rpcUrl = rpcUrl,
+            method = "getBalance",
+            params = JSONArray()
+                .put(address)
+                .put(JSONObject().put("commitment", "confirmed")),
+        )
+        response.getJSONObject("result")
+            .getLong("value")
+    }
+
     private fun post(
         rpcUrl: String,
         method: String,

@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#081311"
+    android:background="@drawable/seeker_wallet_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -27,13 +27,71 @@
             android:textColor="#C9FFF1"
             android:textSize="15sp" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/seeker_wallet_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="18dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/seeker_wallet_balance_label"
+                    android:textColor="#8AF6D4"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/wallet_balance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/seeker_wallet_balance_placeholder"
+                    android:textColor="#FFFFFF"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/seeker_wallet_cluster_label"
+                    android:textColor="#8AF6D4"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/wallet_cluster"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
         <TextView
             android:id="@+id/wallet_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="#11211E"
-            android:padding="16dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/seeker_wallet_card"
+            android:padding="18dp"
             android:textColor="#E8FFF9"
             android:textSize="15sp" />
 
@@ -51,8 +109,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:background="#11211E"
-            android:padding="16dp"
+            android:background="@drawable/seeker_wallet_card"
+            android:padding="18dp"
             android:textColor="#E8FFF9"
             android:textSize="14sp" />
 
@@ -76,7 +134,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:autofillHints=""
-            android:background="#11211E"
+            android:background="@drawable/seeker_wallet_card"
             android:hint="@string/seeker_wallet_send_recipient_hint"
             android:inputType="textNoSuggestions"
             android:padding="16dp"
@@ -89,7 +147,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:autofillHints=""
-            android:background="#11211E"
+            android:background="@drawable/seeker_wallet_card"
             android:hint="@string/seeker_wallet_send_amount_hint"
             android:inputType="numberDecimal"
             android:padding="16dp"
