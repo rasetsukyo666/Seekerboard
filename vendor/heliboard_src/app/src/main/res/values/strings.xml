@@ -723,8 +723,10 @@ New dictionary:
     <string name="theme_name_sand" tools:keep="@string/theme_name_sand">Sand</string>
     <!-- Theme name for saga theme -->
     <string name="theme_name_saga" tools:keep="@string/theme_name_saga">Saga</string>
+    <!-- Theme name for seeker theme -->
+    <string name="theme_name_seeker" tools:keep="@string/theme_name_seeker">Seeker</string>
     <!-- Theme name for solana theme -->
-    <string name="theme_name_solana" tools:keep="@string/theme_name_solana">Seeker</string>
+    <string name="theme_name_solana" tools:keep="@string/theme_name_solana">Solana</string>
     <!-- Theme name for violette theme -->
     <string name="theme_name_violette" tools:keep="@string/theme_name_violette">Violette</string>
     <!-- Theme name for user-defined theme -->

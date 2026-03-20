@@ -65,10 +65,12 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
         const val THEME_PINK = "pink"
         const val THEME_SAND = "sand"
         const val THEME_SAGA = "saga"
+        const val THEME_SEEKER = "seeker"
         const val THEME_SOLANA = "solana"
         const val THEME_VIOLETTE = "violette"
         fun getAvailableDefaultColors(prefs: SharedPreferences, isNight: Boolean) = listOfNotNull(
             THEME_SOLANA,
+            if (!isNight) THEME_SEEKER else null,
             if (!isNight) THEME_SAGA else null,
             if (!isNight) THEME_LIGHT else null, THEME_DARK,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) THEME_DYNAMIC else null,
@@ -343,6 +345,21 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
                     "#FF9945FF".toColorInt(),
                     "#FF9945FF".toColorInt(),
                     keyboardBackground = backgroundImage ?: ContextCompat.getDrawable(context, R.drawable.sgabg)
+                )
+                THEME_SEEKER -> DefaultColors(
+                    themeStyle,
+                    hasBorders,
+                    "#FF9945FF".toColorInt(),
+                    "#FF151615".toColorInt(),
+                    "#FF242624".toColorInt(),
+                    "#FF242624".toColorInt(),
+                    "#FF242624".toColorInt(),
+                    "#FF14F195".toColorInt(),
+                    "#FF9945FF".toColorInt(),
+                    "#FF14F195".toColorInt(),
+                    "#FF9945FF".toColorInt(),
+                    "#FF9945FF".toColorInt(),
+                    keyboardBackground = backgroundImage ?: if (!isNight) ContextCompat.getDrawable(context, R.drawable.skrbrdbg) else null
                 )
                 THEME_SOLANA -> DefaultColors(
                     themeStyle,
