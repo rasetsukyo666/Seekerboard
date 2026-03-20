@@ -19,7 +19,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
-import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.funkatronics.encoders.Base58
 import com.google.zxing.BarcodeFormat
@@ -40,6 +39,7 @@ class SeekerWalletActivity : ComponentActivity() {
     private val transferService = SeekerTransferService()
     private val snsResolver = SeekerSnsResolver()
     private var recipientResolutionJob: Job? = null
+    private var defaultStatusMessage: String = ""
 
     private val walletAdapter by lazy {
         MobileWalletAdapter(
@@ -104,13 +104,12 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<TextView>(R.id.wallet_cluster).text = cluster.label
         updateAddress(address)
         updateConnectedState(address.isNullOrBlank().not())
-        updateStatus(
-            if (address.isNullOrBlank()) {
-                getString(R.string.seeker_wallet_status_ready)
-            } else {
-                getString(R.string.seeker_wallet_status_connected, shortAddress(address))
-            }
-        )
+        defaultStatusMessage = if (address.isNullOrBlank()) {
+            getString(R.string.seeker_wallet_status_ready)
+        } else {
+            getString(R.string.seeker_wallet_status_connected, shortAddress(address))
+        }
+        updateStatus(defaultStatusMessage)
         if (address.isNullOrBlank()) {
             updateBalance(null)
         } else {
@@ -139,7 +138,8 @@ class SeekerWalletActivity : ComponentActivity() {
                     updateAddress(address)
                     updateConnectedState(true)
                     refreshBalance(address, sessionStore.loadCluster())
-                    updateStatus(getString(R.string.seeker_wallet_status_connected, shortAddress(address)))
+                    defaultStatusMessage = getString(R.string.seeker_wallet_status_connected, shortAddress(address))
+                    updateStatus(defaultStatusMessage)
                 }
                 is TransactionResult.NoWalletFound -> {
                     updateStatus(getString(R.string.seeker_wallet_status_no_wallet))
@@ -267,30 +267,27 @@ class SeekerWalletActivity : ComponentActivity() {
     private fun scheduleRecipientResolution(rawInput: String) {
         recipientResolutionJob?.cancel()
         val input = rawInput.trim()
-        val resolutionView = findViewById<TextView>(R.id.wallet_send_resolution)
         if (input.isBlank()) {
-            resolutionView.isVisible = false
+            updateStatus(defaultStatusMessage)
             return
         }
         if (!input.endsWith(".sol", ignoreCase = true)) {
-            resolutionView.isVisible = true
-            resolutionView.text = getString(R.string.seeker_wallet_resolution_direct)
+            updateStatus(getString(R.string.seeker_wallet_resolution_direct))
             return
         }
 
-        resolutionView.isVisible = true
-        resolutionView.text = getString(R.string.seeker_wallet_resolution_resolving, input)
+        updateStatus(getString(R.string.seeker_wallet_resolution_resolving, input))
         recipientResolutionJob = lifecycleScope.launch {
             delay(250)
             try {
                 val resolved = snsResolver.resolveRecipient(input)
-                resolutionView.text = getString(
+                updateStatus(getString(
                     R.string.seeker_wallet_resolution_resolved,
                     input,
                     shortAddress(resolved),
-                )
+                ))
             } catch (_: Throwable) {
-                resolutionView.text = getString(R.string.seeker_wallet_resolution_failed, input)
+                updateStatus(getString(R.string.seeker_wallet_resolution_failed, input))
             }
         }
     }
