@@ -1348,9 +1348,7 @@ public class LatinIME extends InputMethodService implements
         }
         final Intent intent = new Intent();
         intent.setClass(LatinIME.this, SeekerWalletActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
     }
 
