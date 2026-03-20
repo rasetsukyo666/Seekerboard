@@ -721,6 +721,8 @@ New dictionary:
     <string name="theme_name_pink" tools:keep="@string/theme_name_pink">Pink</string>
     <!-- Theme name for sand theme -->
     <string name="theme_name_sand" tools:keep="@string/theme_name_sand">Sand</string>
+    <!-- Theme name for saga theme -->
+    <string name="theme_name_saga" tools:keep="@string/theme_name_saga">Saga</string>
     <!-- Theme name for solana theme -->
     <string name="theme_name_solana" tools:keep="@string/theme_name_solana">Seeker</string>
     <!-- Theme name for violette theme -->

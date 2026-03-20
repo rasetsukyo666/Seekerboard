@@ -64,10 +64,12 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
         const val THEME_OCEAN = "ocean"
         const val THEME_PINK = "pink"
         const val THEME_SAND = "sand"
+        const val THEME_SAGA = "saga"
         const val THEME_SOLANA = "solana"
         const val THEME_VIOLETTE = "violette"
         fun getAvailableDefaultColors(prefs: SharedPreferences, isNight: Boolean) = listOfNotNull(
             THEME_SOLANA,
+            if (!isNight) THEME_SAGA else null,
             if (!isNight) THEME_LIGHT else null, THEME_DARK,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) THEME_DYNAMIC else null,
             if (prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE) == STYLE_HOLO) THEME_HOLO_WHITE else null,
@@ -165,7 +167,7 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
                     ContextCompat.getColor(context, R.color.key_background_normal_lxx_light_border),
                     ContextCompat.getColor(context, R.color.key_text_color_lxx_light),
                     ContextCompat.getColor(context, R.color.key_hint_letter_color_lxx_light),
-                    keyboardBackground = backgroundImage
+                    keyboardBackground = backgroundImage ?: if (!isNight) ContextCompat.getDrawable(context, R.drawable.skrbrdbg) else null
                 )
                 THEME_DARK -> DefaultColors(
                     themeStyle,
@@ -326,6 +328,21 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
                     Color.BLACK,
                     Color.BLACK,
                     keyboardBackground = backgroundImage
+                )
+                THEME_SAGA -> DefaultColors(
+                    themeStyle,
+                    hasBorders,
+                    "#FF9945FF".toColorInt(),
+                    "#FF111415".toColorInt(),
+                    "#FF1E2426".toColorInt(),
+                    "#FF1E2426".toColorInt(),
+                    "#FF1E2426".toColorInt(),
+                    "#FF14F195".toColorInt(),
+                    "#FF9945FF".toColorInt(),
+                    "#FF14F195".toColorInt(),
+                    "#FF9945FF".toColorInt(),
+                    "#FF9945FF".toColorInt(),
+                    keyboardBackground = backgroundImage ?: ContextCompat.getDrawable(context, R.drawable.sgabg)
                 )
                 THEME_SOLANA -> DefaultColors(
                     themeStyle,
