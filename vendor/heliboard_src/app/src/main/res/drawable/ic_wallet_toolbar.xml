@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M4,6C4,4.9 4.9,4 6,4H18C19.1,4 20,4.9 20,6V7H13C11.34,7 10,8.34 10,10C10,11.66 11.34,13 13,13H20V18C20,19.1 19.1,20 18,20H6C4.9,20 4,19.1 4,18V6ZM13,9C12.45,9 12,9.45 12,10C12,10.55 12.45,11 13,11H21V9H13ZM15,10C15,9.45 15.45,9 16,9C16.55,9 17,9.45 17,10C17,10.55 16.55,11 16,11C15.45,11 15,10.55 15,10Z" />
-</vector>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="2dp"
+    android:insetTop="2dp"
+    android:insetRight="2dp"
+    android:insetBottom="2dp">
+    <bitmap
+        android:src="@drawable/solana_logo_mark"
+        android:gravity="center" />
+</inset>

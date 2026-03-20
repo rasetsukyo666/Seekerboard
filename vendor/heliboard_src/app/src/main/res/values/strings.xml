@@ -1092,11 +1092,11 @@ New dictionary:
     <string name="gesture_data_links">Information on gesture data gathering on:</string>
 
     <string name="seeker_wallet_title">Solana Wallet</string>
-    <string name="seeker_wallet_summary">Solana is the primary wallet surface here. SKR stays secondary inside the wallet.</string>
-    <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. Connect, accounts, and stake are the next Solana-first screens to wire.</string>
+    <string name="seeker_wallet_summary">Solana is the primary wallet surface here. Staking and consolidation target the Solana Mobile validator. SKR stays secondary inside the wallet.</string>
+    <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. Solana connect, Solana Mobile validator stake, and account consolidation are the next screens to wire.</string>
     <string name="seeker_wallet_status_connect">Wallet connect path is the next Seeker bridge to attach here.</string>
     <string name="seeker_wallet_status_accounts">Account management will show SOL balance, native stake, and token positions here.</string>
-    <string name="seeker_wallet_status_stake">Stake management will stay Solana-first in this main wallet surface.</string>
+    <string name="seeker_wallet_status_stake">Stake management here is Solana-first and meant for the Solana Mobile validator path.</string>
     <string name="seeker_wallet_status_skr">SKR remains secondary and lives behind this button instead of the main wallet surface.</string>
     <string name="seeker_wallet_connect">Connect Wallet</string>
     <string name="seeker_wallet_accounts">Accounts</string>
