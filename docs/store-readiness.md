@@ -1,6 +1,6 @@
-# SeekerKeyboard Store Readiness
+# Seekerboard Store Readiness
 
-This is the minimum release checklist for shipping SeekerKeyboard to the Solana Mobile dApp Store.
+This is the minimum release checklist for shipping Seekerboard to the Solana Mobile dApp Store.
 
 ## Branding
 

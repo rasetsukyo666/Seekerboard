@@ -1,4 +1,4 @@
-SeekerKeyboard includes and modifies code from HeliBoard.
+Seekerboard includes and modifies code from HeliBoard.
 
 Fork base:
 - HeliBoard: https://github.com/Helium314/HeliBoard
@@ -8,7 +8,7 @@ Upstream licensing:
 - Apache-2.0 components from AOSP/OpenBoard lineage
 - CC-BY-SA-4.0 for certain icon assets noted by upstream
 
-This fork keeps SeekerKeyboard branding and Solana-specific wallet integration on top of
+This fork keeps Seekerboard branding and Solana-specific wallet integration on top of
 the HeliBoard typing engine. Distribution of binaries based on the HeliBoard codebase must
 continue to respect the applicable upstream license obligations and notices.
 

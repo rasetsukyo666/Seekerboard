@@ -108,7 +108,7 @@ Implementation note:
 
 ## Licensing
 
-HeliBoard is GPL-3.0 based. If SeekerKeyboard adopts HeliBoard code directly, the resulting keyboard codebase needs to respect that license.
+HeliBoard is GPL-3.0 based. If Seekerboard adopts HeliBoard code directly, the resulting keyboard codebase needs to respect that license.
 
 This is not a blocker, but it should be treated as an explicit product decision before wider distribution.
 
