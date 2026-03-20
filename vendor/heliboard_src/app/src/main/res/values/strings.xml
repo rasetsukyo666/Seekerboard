@@ -1092,17 +1092,14 @@ New dictionary:
     <string name="gesture_data_links">Information on gesture data gathering on:</string>
 
     <string name="seeker_wallet_title">Solana Wallet</string>
-    <string name="seeker_wallet_summary">Solana is the primary wallet surface here. Staking and consolidation target the Solana Mobile validator. SKR stays secondary inside the wallet.</string>
-    <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. Solana connect, Solana Mobile validator stake, and account consolidation are the next screens to wire.</string>
-    <string name="seeker_wallet_status_connect">Wallet connect path is the next Seeker bridge to attach here.</string>
-    <string name="seeker_wallet_status_accounts">Account management will show SOL balance, native stake, and token positions here.</string>
-    <string name="seeker_wallet_status_stake">Stake management here is Solana-first and meant for the Solana Mobile validator path.</string>
-    <string name="seeker_wallet_status_skr">SKR remains secondary and lives behind this button instead of the main wallet surface.</string>
+    <string name="seeker_wallet_summary">V1 keeps the wallet simple: Solana connect, send, and receive. Fees and staking stay out of the primary flow for now.</string>
+    <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. V1 is connect, send, and receive only.</string>
+    <string name="seeker_wallet_status_connect">Wallet connect is the first Seeker bridge to wire here for v1.</string>
+    <string name="seeker_wallet_status_send">Send will be the first Solana action after connect in v1.</string>
+    <string name="seeker_wallet_status_receive">Receive will expose the Solana address and quick copy/share path in v1.</string>
     <string name="seeker_wallet_connect">Connect Wallet</string>
-    <string name="seeker_wallet_accounts">Accounts</string>
-    <string name="seeker_wallet_stake">Stake</string>
-    <string name="seeker_wallet_skr_section">Secondary</string>
-    <string name="seeker_wallet_skr">Open SKR Tools</string>
+    <string name="seeker_wallet_send">Send</string>
+    <string name="seeker_wallet_receive">Receive</string>
     <string name="seeker_wallet_close">Back To Keyboard</string>
 
     <!-- new strings should go above the section for gesture data gathering -->

@@ -45,34 +45,18 @@
             android:text="@string/seeker_wallet_connect" />
 
         <Button
-            android:id="@+id/wallet_accounts"
+            android:id="@+id/wallet_send"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_accounts" />
+            android:text="@string/seeker_wallet_send" />
 
         <Button
-            android:id="@+id/wallet_stake"
+            android:id="@+id/wallet_receive"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_stake" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="@string/seeker_wallet_skr_section"
-            android:textColor="#14F195"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/wallet_skr"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_skr" />
+            android:text="@string/seeker_wallet_receive" />
 
         <Button
             android:id="@+id/wallet_close"

@@ -18,14 +18,11 @@ class SeekerWalletActivity : Activity() {
         findViewById<Button>(R.id.wallet_connect).setOnClickListener {
             status.text = getString(R.string.seeker_wallet_status_connect)
         }
-        findViewById<Button>(R.id.wallet_accounts).setOnClickListener {
-            status.text = getString(R.string.seeker_wallet_status_accounts)
+        findViewById<Button>(R.id.wallet_send).setOnClickListener {
+            status.text = getString(R.string.seeker_wallet_status_send)
         }
-        findViewById<Button>(R.id.wallet_stake).setOnClickListener {
-            status.text = getString(R.string.seeker_wallet_status_stake)
-        }
-        findViewById<Button>(R.id.wallet_skr).setOnClickListener {
-            status.text = getString(R.string.seeker_wallet_status_skr)
+        findViewById<Button>(R.id.wallet_receive).setOnClickListener {
+            status.text = getString(R.string.seeker_wallet_status_receive)
         }
     }
 }
