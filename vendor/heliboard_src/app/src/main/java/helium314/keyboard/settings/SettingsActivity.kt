@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -113,7 +112,7 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
                     Image(
                         painter = painterResource(R.drawable.skrbrdbg),
                         contentDescription = null,
-                        modifier = Modifier.matchParentSize(),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                         alpha = 0.18f
                     )
@@ -122,8 +121,8 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
                     val crashReports by crashReportFiles.collectAsState()
                     val crashFilePicker = filePicker { saveCrashReports(it) }
                     var showWelcomeWizard by rememberSaveable { mutableStateOf(
-                        !UncachedInputMethodManagerUtils.isThisImeCurrent(this, imm)
-                                || !UncachedInputMethodManagerUtils.isThisImeEnabled(this, imm)
+                        !UncachedInputMethodManagerUtils.isThisImeCurrent(this@SettingsActivity, imm)
+                                || !UncachedInputMethodManagerUtils.isThisImeEnabled(this@SettingsActivity, imm)
                     ) }
                     if (spellchecker)
                         Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { innerPadding ->
@@ -141,9 +140,9 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
                             }
                         }
                     else {
-                        SettingsNavHost(onClickBack = { this.finish() }, startDestination = startDestination)
+                        SettingsNavHost(onClickBack = { this@SettingsActivity.finish() }, startDestination = startDestination)
                         if (!skipWelcomeWizard && showWelcomeWizard) {
-                            WelcomeWizard(close = { showWelcomeWizard = false }, finish = this::finish)
+                            WelcomeWizard(close = { showWelcomeWizard = false }, finish = this@SettingsActivity::finish)
                         } else if (crashReports.isNotEmpty()) {
                             ConfirmationDialog(
                                 cancelButtonText = "ignore",
