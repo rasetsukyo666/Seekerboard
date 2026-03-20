@@ -1,18 +1,26 @@
 package helium314.keyboard.seeker
 
+import android.app.AlertDialog
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.funkatronics.encoders.Base58
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
 import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
@@ -136,6 +144,7 @@ class SeekerWalletActivity : ComponentActivity() {
         }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Solana address", address))
+        showReceiveQr(address)
         updateStatus(getString(R.string.seeker_wallet_status_receive, shortAddress(address)))
     }
 
@@ -234,6 +243,59 @@ class SeekerWalletActivity : ComponentActivity() {
         } catch (_: Throwable) {
             updateBalance(null)
         }
+    }
+
+    private fun showReceiveQr(address: String) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val padding = dp(20)
+            setPadding(padding, padding, padding, padding)
+            setBackgroundColor(Color.parseColor("#FF151615"))
+        }
+
+        val qrImage = ImageView(this).apply {
+            val size = dp(240)
+            layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                bottomMargin = dp(16)
+            }
+            setImageBitmap(buildQrBitmap(address, size))
+            setBackgroundColor(Color.WHITE)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+        }
+
+        val addressView = TextView(this).apply {
+            text = address
+            setTextColor(Color.parseColor("#FFE8FFF9"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        }
+
+        container.addView(qrImage)
+        container.addView(addressView)
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.seeker_wallet_receive))
+            .setView(container)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun buildQrBitmap(value: String, sizePx: Int): Bitmap {
+        val matrix = QRCodeWriter().encode(value, BarcodeFormat.QR_CODE, sizePx, sizePx)
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        for (x in 0 until sizePx) {
+            for (y in 0 until sizePx) {
+                bitmap.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
+            }
+        }
+        return bitmap
+    }
+
+    private fun dp(value: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            value.toFloat(),
+            resources.displayMetrics,
+        ).toInt()
     }
 
     private fun shortAddress(address: String): String {

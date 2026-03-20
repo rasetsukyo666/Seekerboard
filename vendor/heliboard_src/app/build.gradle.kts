@@ -128,6 +128,7 @@ dependencies {
     implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.7")
     implementation("com.solanamobile:web3-solana:0.2.5")
     implementation("io.github.funkatronics:multimult:0.2.3")
+    implementation("com.google.zxing:core:3.5.3")
 
     // compose
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
