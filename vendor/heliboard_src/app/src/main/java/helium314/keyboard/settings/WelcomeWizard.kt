@@ -222,7 +222,7 @@ fun WelcomeWizard(
 fun Step0(onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
-            painterResource(R.mipmap.ic_launcher_round),
+            painterResource(R.drawable.seekerkeyboardicon),
             null,
             modifier = Modifier.size(140.dp)
         )
