@@ -722,7 +722,7 @@ New dictionary:
     <!-- Theme name for sand theme -->
     <string name="theme_name_sand" tools:keep="@string/theme_name_sand">Sand</string>
     <!-- Theme name for solana theme -->
-    <string name="theme_name_solana" tools:keep="@string/theme_name_solana">Solana</string>
+    <string name="theme_name_solana" tools:keep="@string/theme_name_solana">Seeker</string>
     <!-- Theme name for violette theme -->
     <string name="theme_name_violette" tools:keep="@string/theme_name_violette">Violette</string>
     <!-- Theme name for user-defined theme -->
