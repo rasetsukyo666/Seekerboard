@@ -1128,6 +1128,7 @@ New dictionary:
     <string name="seeker_wallet_send_recipient_hint">Recipient address</string>
     <string name="seeker_wallet_send_amount_hint">Amount in SOL</string>
     <string name="seeker_wallet_close">Back To Keyboard</string>
+    <string name="seeker_wallet_disconnect">Disconnect</string>
 
     <!-- new strings should go above the section for gesture data gathering -->
 </resources>

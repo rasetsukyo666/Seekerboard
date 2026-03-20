@@ -168,5 +168,14 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:text="@string/seeker_wallet_close" />
+
+        <Button
+            android:id="@+id/wallet_disconnect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#FFB63B3B"
+            android:text="@string/seeker_wallet_disconnect"
+            android:textColor="#FFFFFFFF" />
     </LinearLayout>
 </ScrollView>

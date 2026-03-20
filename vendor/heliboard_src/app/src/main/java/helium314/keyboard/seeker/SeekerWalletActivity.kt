@@ -65,6 +65,9 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_connect) {
             lifecycleScope.launch { connectWallet() }
         }
+        bindButton(R.id.wallet_disconnect) {
+            disconnectWallet()
+        }
         bindButton(R.id.wallet_receive) {
             copyReceiveAddress()
         }
@@ -252,8 +255,17 @@ class SeekerWalletActivity : ComponentActivity() {
         if (connectButton.visibility == View.VISIBLE) {
             connectButton.isEnabled = !isBusy
         }
+        findViewById<Button>(R.id.wallet_disconnect).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_receive).isEnabled = !isBusy
+    }
+
+    private fun disconnectWallet() {
+        sessionStore.saveAuthToken(null)
+        sessionStore.saveWalletAddress(null)
+        walletAdapter.authToken = null
+        defaultStatusMessage = getString(R.string.seeker_wallet_status_ready)
+        bindCurrentSession()
     }
 
     private suspend fun refreshBalance(address: String, cluster: SolanaCluster) {
