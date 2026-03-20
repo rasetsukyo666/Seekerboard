@@ -47,14 +47,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             isShrinkResources = false
             isDebuggable = false
             isJniDebuggable = false
             signingConfig = signingConfigs.findByName("releaseStore") ?: signingConfigs.getByName("debug")
         }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             isShrinkResources = false
             isDebuggable = false
             isJniDebuggable = false
