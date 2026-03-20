@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 
 class SeekerWalletActivity : ComponentActivity() {
     private lateinit var sessionStore: SeekerWalletSessionStore
+    private lateinit var activityResultSender: ActivityResultSender
     private val rpcService = SeekerSolanaRpcService()
     private val transferService = SeekerTransferService()
 
@@ -40,6 +41,7 @@ class SeekerWalletActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sessionStore = SeekerWalletSessionStore(applicationContext)
+        activityResultSender = ActivityResultSender(this)
         setContentView(R.layout.activity_seeker_wallet)
 
         bindCurrentSession()
@@ -78,8 +80,7 @@ class SeekerWalletActivity : ComponentActivity() {
     private suspend fun connectWallet() {
         setBusy(true)
         try {
-            val sender = ActivityResultSender(this)
-            when (val result = walletAdapter.transact(sender) { authResult ->
+            when (val result = walletAdapter.transact(activityResultSender) { authResult ->
                 authResult
             }) {
                 is TransactionResult.Success -> {
@@ -149,8 +150,7 @@ class SeekerWalletActivity : ComponentActivity() {
                 lamports = amountLamports,
                 recentBlockhash = recentBlockhash,
             )
-            val sender = ActivityResultSender(this)
-            when (val result = walletAdapter.transact(sender) { authResult ->
+            when (val result = walletAdapter.transact(activityResultSender) { authResult ->
                 signAndSendTransactions(arrayOf(tx.serialize()))
             }) {
                 is TransactionResult.Success -> {
