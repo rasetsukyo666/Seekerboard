@@ -14,6 +14,7 @@ android {
     val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
     val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+    val releaseStoreType = System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
 
     defaultConfig {
         applicationId = "helium314.keyboard"
@@ -37,6 +38,7 @@ android {
             create("releaseStore") {
                 storeFile = file(releaseStoreFile)
                 storePassword = releaseStorePassword
+                storeType = releaseStoreType
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
             }
