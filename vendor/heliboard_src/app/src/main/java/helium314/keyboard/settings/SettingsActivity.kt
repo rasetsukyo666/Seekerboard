@@ -64,6 +64,14 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
     companion object {
         const val EXTRA_START_DESTINATION = "start_destination"
         const val EXTRA_SKIP_WELCOME_WIZARD = "skip_welcome_wizard"
+
+        // public write so compose previews can show the screens
+        // having it in a companion object is not ideal as it will stay in memory even after settings are closed
+        // but it's small enough to not care
+        lateinit var settingsContainer: SettingsContainer
+
+        var forceNight: Boolean? = null
+        var forceTheme: String? = null
     }
 
     private val prefs by lazy { this.prefs() }
@@ -227,17 +235,6 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
             }
         }
     }
-
-    companion object {
-        // public write so compose previews can show the screens
-        // having it in a companion object is not ideal as it will stay in memory even after settings are closed
-        // but it's small enough to not care
-        lateinit var settingsContainer: SettingsContainer
-
-        var forceNight: Boolean? = null
-        var forceTheme: String? = null
-    }
-
     override fun onSharedPreferenceChanged(prefereces: SharedPreferences?, key: String?) {
         prefChanged()
     }
