@@ -170,7 +170,7 @@ fun WelcomeWizard(
                             Modifier.padding(end = 6.dp).size(32.dp),
                             tint = textColor
                         )
-                        Text(stringResource(R.string.setup_step3_action), Modifier.weight(1f))
+                        Text(stringResource(R.string.setup_finish_action), Modifier.weight(1f))
                     }
                 } else { // step 3
                     Step(
@@ -178,24 +178,9 @@ fun WelcomeWizard(
                         stringResource(R.string.setup_step3_title),
                         stringResource(R.string.setup_step3_instruction, appName),
                         stringResource(R.string.setup_step3_action),
-                        painterResource(R.drawable.sym_keyboard_language_switch),
-                        close
+                        painterResource(R.drawable.ic_setup_check),
+                        finish
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        Modifier.clickable { finish() }
-                            .background(color = stepBackgroundColor)
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.ic_setup_check),
-                            null,
-                            Modifier.padding(end = 6.dp).size(32.dp),
-                            tint = textColor
-                        )
-                        Text(stringResource(R.string.setup_finish_action), Modifier.weight(1f))
-                    }
                 }
             }
     }

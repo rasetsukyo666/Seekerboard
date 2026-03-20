@@ -595,13 +595,13 @@ language, hence "No language". -->
     <!-- The label of the button that triggers the choose input method dialog in order to select the keyboard. -->
     <string name="setup_step2_action">Switch input methods</string>
     <!-- Title of the 3rd step in the setup wizard. -->
-    <string name="setup_step3_title">"Congratulations, you're all set!"</string>
+    <string name="setup_step3_title">"You're ready to type"</string>
     <!-- Detailed instruction of the 3rd step in the setup wizard. %s is the application name. -->
-    <string name="setup_step3_instruction">Now you can type in all your favorite apps with %s.</string>
+    <string name="setup_step3_instruction">Start with %1$s in any app. Tip: long-press keys for accents and symbols, use ?123 for numbers and punctuation, and open the Solana button only when you want wallet actions.</string>
     <!-- The label of the button that triggers the settings screen for the keyboard. -->
-    <string name="setup_step3_action">Configure the keyboard</string>
+    <string name="setup_step3_action">Start typing</string>
     <!-- The label of the button that finishes the setup wizard. -->
-    <string name="setup_finish_action">Finished</string>
+    <string name="setup_finish_action">Skip for now</string>
     <!-- Option to show setup wizard icon. Legacy setting only displayed for Android 9 and older. -->
     <string name="show_setup_wizard_icon">Show app icon</string>
     <!-- Description for the option to show setup wizard application icon of this IME in the launcher. -->
@@ -1095,7 +1095,7 @@ New dictionary:
 
     <string name="seeker_wallet_title">Solana Wallet</string>
     <string name="seeker_wallet_summary">Typing stays local and private-first. Solana network access is only used when you explicitly open wallet features like connect, send, or receive.</string>
-    <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. V1 is connect, send, and receive only.</string>
+    <string name="seeker_wallet_status_ready">SeekerKeyboard wallet v1 is Solana connect, send, and receive only.</string>
     <string name="seeker_wallet_status_connect">Wallet connect is the first Seeker bridge to wire here for v1.</string>
     <string name="seeker_wallet_status_send">Send will be the first Solana action after connect in v1.</string>
     <string name="seeker_wallet_status_receive">Copied %1$s to clipboard.</string>
