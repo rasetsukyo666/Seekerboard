@@ -70,9 +70,16 @@ class SeekerWalletActivity : ComponentActivity() {
         setBusy(true)
         try {
             val sender = ActivityResultSender(this)
-            when (val result = walletAdapter.connect(sender)) {
+            when (val result = walletAdapter.transact(sender) { authResult ->
+                authResult
+            }) {
                 is TransactionResult.Success -> {
-                    val address = Base58.encodeToString(result.authResult.accounts.first().publicKey)
+                    val account = result.authResult.accounts.firstOrNull()
+                    if (account == null) {
+                        updateStatus(getString(R.string.seeker_wallet_status_connect_failed, "wallet returned no account"))
+                        return
+                    }
+                    val address = Base58.encodeToString(account.publicKey)
                     sessionStore.saveWalletAddress(address)
                     sessionStore.saveAuthToken(result.authResult.authToken)
                     walletAdapter.authToken = result.authResult.authToken
@@ -86,6 +93,8 @@ class SeekerWalletActivity : ComponentActivity() {
                     updateStatus(getString(R.string.seeker_wallet_status_connect_failed, result.e.message ?: "unknown error"))
                 }
             }
+        } catch (error: Throwable) {
+            updateStatus(getString(R.string.seeker_wallet_status_connect_failed, error.message ?: "unexpected error"))
         } finally {
             setBusy(false)
         }
@@ -132,18 +141,14 @@ class SeekerWalletActivity : ComponentActivity() {
                 recentBlockhash = recentBlockhash,
             )
             val sender = ActivityResultSender(this)
-            when (val result = walletAdapter.transact(sender) {
-                walletAdapter.authToken?.let { authToken ->
-                    reauthorize(
-                        identityUri = Uri.parse(IDENTITY_URI),
-                        iconUri = Uri.parse(ICON_URI),
-                        identityName = IDENTITY_NAME,
-                        authToken = authToken,
-                    )
-                }
+            when (val result = walletAdapter.transact(sender) { authResult ->
                 signAndSendTransactions(arrayOf(tx.serialize()))
             }) {
                 is TransactionResult.Success -> {
+                    result.authResult.authToken?.let {
+                        sessionStore.saveAuthToken(it)
+                        walletAdapter.authToken = it
+                    }
                     updateStatus(getString(R.string.seeker_wallet_status_send_success, amountSol, shortAddress(recipient)))
                 }
                 is TransactionResult.NoWalletFound -> {
@@ -181,7 +186,7 @@ class SeekerWalletActivity : ComponentActivity() {
     private companion object {
         const val IDENTITY_NAME = "SeekerKeyboard"
         const val IDENTITY_URI = "https://seekerkeyboard.app"
-        const val ICON_URI = "https://seekerkeyboard.app/icon.png"
+        const val ICON_URI = "favicon.ico"
         const val LAMPORTS_PER_SOL = 1_000_000_000.0
     }
 }
