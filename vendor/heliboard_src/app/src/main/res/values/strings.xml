@@ -591,13 +591,14 @@ language, hence "No language". -->
     <!-- Title of the 2nd step in the setup wizard. %s is the application name. -->
     <string name="setup_step2_title">"Switch to %s"</string>
     <!-- Detailed instruction of the 2nd step in the setup wizard. %s is the application name. -->
-    <string name="setup_step2_instruction">"Next, select \"%s\" as your active text-input method."</string>
+    <string name="setup_step2_instruction">"Next, select \"%s\" as your active text-input method, then choose the languages you want enabled."</string>
     <!-- The label of the button that triggers the choose input method dialog in order to select the keyboard. -->
     <string name="setup_step2_action">Switch input methods</string>
+    <string name="setup_step2_secondary_action">Choose languages</string>
     <!-- Title of the 3rd step in the setup wizard. -->
     <string name="setup_step3_title">"You're ready to type"</string>
     <!-- Detailed instruction of the 3rd step in the setup wizard. %s is the application name. -->
-    <string name="setup_step3_instruction">Start with %1$s in any app. Tip: long-press keys for accents and symbols, use ?123 for numbers and punctuation, and open the Solana button only when you want wallet actions.</string>
+    <string name="setup_step3_instruction">%1$s is privacy-first by default. Just start typing in any app. Solana wallet connect is optional and only there when you choose to open it.</string>
     <!-- The label of the button that triggers the settings screen for the keyboard. -->
     <string name="setup_step3_action">Start typing</string>
     <!-- The label of the button that finishes the setup wizard. -->

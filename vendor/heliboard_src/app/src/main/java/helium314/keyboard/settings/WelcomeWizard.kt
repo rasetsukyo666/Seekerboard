@@ -159,18 +159,24 @@ fun WelcomeWizard(
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(
-                        Modifier.clickable { close() }
+                        Modifier.clickable {
+                            launcher.launch(
+                                Intent(ctx, SettingsActivity::class.java)
+                                    .putExtra(SettingsActivity.EXTRA_START_DESTINATION, SettingsDestination.Languages)
+                                    .putExtra(SettingsActivity.EXTRA_SKIP_WELCOME_WIZARD, true)
+                            )
+                        }
                             .background(color = stepBackgroundColor)
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painterResource(R.drawable.sym_keyboard_language_switch),
+                            painterResource(R.drawable.ic_settings_languages),
                             null,
                             Modifier.padding(end = 6.dp).size(32.dp),
                             tint = textColor
                         )
-                        Text(stringResource(R.string.setup_finish_action), Modifier.weight(1f))
+                        Text(stringResource(R.string.setup_step2_secondary_action), Modifier.weight(1f))
                     }
                 } else { // step 3
                     Step(

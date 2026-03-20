@@ -61,6 +61,11 @@ import java.util.zip.ZipOutputStream
 //  https://developer.android.com/topic/performance/baselineprofiles/overview
 // todo: consider viewModel, at least for LanguageScreen and ColorsScreen it might help making them less awkward and complicated
 open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
+    companion object {
+        const val EXTRA_START_DESTINATION = "start_destination"
+        const val EXTRA_SKIP_WELCOME_WIZARD = "skip_welcome_wizard"
+    }
+
     private val prefs by lazy { this.prefs() }
     val prefChanged = MutableStateFlow(0) // simple counter, as the only relevant information is that something changed
     fun prefChanged() = prefChanged.value++
@@ -79,6 +84,8 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
         ExecutorUtils.getBackgroundExecutor(ExecutorUtils.KEYBOARD).execute { cleanUnusedMainDicts(this) }
         crashReportFiles.value = findCrashReports(!BuildConfig.DEBUG && !DebugFlags.DEBUG_ENABLED)
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        val startDestination = intent?.getStringExtra(EXTRA_START_DESTINATION)
+        val skipWelcomeWizard = intent?.getBooleanExtra(EXTRA_SKIP_WELCOME_WIZARD, false) ?: false
 
         settingsContainer = SettingsContainer(this)
 
@@ -112,8 +119,8 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
                             }
                         }
                     else {
-                        SettingsNavHost(onClickBack = { this.finish() })
-                        if (showWelcomeWizard) {
+                        SettingsNavHost(onClickBack = { this.finish() }, startDestination = startDestination)
+                        if (!skipWelcomeWizard && showWelcomeWizard) {
                             WelcomeWizard(close = { showWelcomeWizard = false }, finish = this::finish)
                         } else if (crashReports.isNotEmpty()) {
                             ConfirmationDialog(
