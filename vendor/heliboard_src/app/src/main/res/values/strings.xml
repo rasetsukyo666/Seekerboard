@@ -9,11 +9,11 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2"
     tools:ignore="MissingTranslation">
     <!-- Name of Android spell checker service. The app name should not be translated. -->
-    <string name="spell_checker_service_name">SeekerKeyboard Spell Checker</string>
+    <string name="spell_checker_service_name">Seekerboard Spell Checker</string>
     <!-- Title for IME settings screen. The app name should not be translated. -->
-    <string name="ime_settings">SeekerKeyboard Settings</string>
+    <string name="ime_settings">Seekerboard Settings</string>
     <!-- Title for the spell checking service settings screen. The app name should not be translated. -->
-    <string name="android_spell_checker_settings">SeekerKeyboard Spell Checker Settings</string>
+    <string name="android_spell_checker_settings">Seekerboard Spell Checker Settings</string>
     <!-- Option to provide vibrate/haptic feedback on keypress -->
     <string name="vibrate_on_keypress">Vibrate on keypress</string>
     <!-- Option to provide vibrate/haptic feedback on keypress even in do not disturb mode -->
@@ -1096,7 +1096,7 @@ New dictionary:
 
     <string name="seeker_wallet_title">Solana Wallet</string>
     <string name="seeker_wallet_summary">Typing stays local and private-first. Solana network access is only used when you explicitly open wallet features like connect, send, or receive.</string>
-    <string name="seeker_wallet_status_ready">SeekerKeyboard wallet v1 is Solana connect, send, and receive only.</string>
+    <string name="seeker_wallet_status_ready">Seekerboard wallet v1 is Solana connect, send, and receive only.</string>
     <string name="seeker_wallet_status_connect">Wallet connect is the first Seeker bridge to wire here for v1.</string>
     <string name="seeker_wallet_status_send">Send will be the first Solana action after connect in v1.</string>
     <string name="seeker_wallet_status_receive">Copied %1$s to clipboard.</string>

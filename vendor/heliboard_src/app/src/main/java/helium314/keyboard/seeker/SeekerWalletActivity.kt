@@ -193,7 +193,7 @@ class SeekerWalletActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val IDENTITY_NAME = "SeekerKeyboard"
+        const val IDENTITY_NAME = "Seekerboard"
         const val IDENTITY_URI = "https://seekerkeyboard.app"
         const val ICON_URI = "favicon.ico"
         const val LAMPORTS_PER_SOL = 1_000_000_000.0
