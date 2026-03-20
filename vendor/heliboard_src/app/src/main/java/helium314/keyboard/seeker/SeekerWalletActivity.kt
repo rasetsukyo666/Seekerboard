@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -42,15 +44,22 @@ class SeekerWalletActivity : ComponentActivity() {
 
         bindCurrentSession()
 
-        findViewById<Button>(R.id.wallet_close).setOnClickListener { finish() }
-        findViewById<Button>(R.id.wallet_connect).setOnClickListener {
+        bindButton(R.id.wallet_close) { finish() }
+        bindButton(R.id.wallet_connect) {
             lifecycleScope.launch { connectWallet() }
         }
-        findViewById<Button>(R.id.wallet_receive).setOnClickListener {
+        bindButton(R.id.wallet_receive) {
             copyReceiveAddress()
         }
-        findViewById<Button>(R.id.wallet_send).setOnClickListener {
+        bindButton(R.id.wallet_send) {
             lifecycleScope.launch { sendSol() }
+        }
+    }
+
+    private fun bindButton(id: Int, action: () -> Unit) {
+        findViewById<Button>(id).setOnClickListener { view ->
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            action()
         }
     }
 
