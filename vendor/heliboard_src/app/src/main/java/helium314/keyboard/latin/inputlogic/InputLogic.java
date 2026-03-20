@@ -699,6 +699,9 @@ public final class InputLogic {
             case KeyCode.SETTINGS:
                 onSettingsKeyPressed();
                 break;
+            case KeyCode.WALLET:
+                onWalletKeyPressed();
+                break;
             case KeyCode.ACTION_NEXT:
                 performEditorAction(EditorInfo.IME_ACTION_NEXT);
                 break;
@@ -2117,6 +2120,10 @@ public final class InputLogic {
      */
     private void onSettingsKeyPressed() {
         mLatinIME.displaySettingsDialog();
+    }
+
+    private void onWalletKeyPressed() {
+        mLatinIME.launchSeekerWallet();
     }
 
     /**

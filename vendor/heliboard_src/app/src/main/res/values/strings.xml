@@ -336,6 +336,7 @@
     <string name="clipboard" tools:keep="@string/clipboard">Clipboard</string>
     <string name="clear_clipboard" tools:keep="@string/clear_clipboard">Clear clipboard</string>
     <string name="voice" tools:keep="@string/voice">Voice input</string>
+    <string name="wallet" tools:keep="@string/wallet">Wallet</string>
     <string name="numpad" tools:keep="@string/numpad" translatable="false">@string/layout_numpad</string>
     <string name="settings" tools:keep="@string/settings">Settings</string>
     <string name="select_all" tools:keep="@string/select_all" translatable="false">@android:string/selectAll</string>
@@ -1089,6 +1090,20 @@ New dictionary:
     <!-- Message followed by a list of links
      string will probably be removed once data gathering is finished (end of 2026 latest) -->
     <string name="gesture_data_links">Information on gesture data gathering on:</string>
+
+    <string name="seeker_wallet_title">Solana Wallet</string>
+    <string name="seeker_wallet_summary">Solana is the primary wallet surface here. SKR stays secondary inside the wallet.</string>
+    <string name="seeker_wallet_status_ready">Seeker wallet integration is attached to the HeliBoard typing base. Connect, accounts, and stake are the next Solana-first screens to wire.</string>
+    <string name="seeker_wallet_status_connect">Wallet connect path is the next Seeker bridge to attach here.</string>
+    <string name="seeker_wallet_status_accounts">Account management will show SOL balance, native stake, and token positions here.</string>
+    <string name="seeker_wallet_status_stake">Stake management will stay Solana-first in this main wallet surface.</string>
+    <string name="seeker_wallet_status_skr">SKR remains secondary and lives behind this button instead of the main wallet surface.</string>
+    <string name="seeker_wallet_connect">Connect Wallet</string>
+    <string name="seeker_wallet_accounts">Accounts</string>
+    <string name="seeker_wallet_stake">Stake</string>
+    <string name="seeker_wallet_skr_section">Secondary</string>
+    <string name="seeker_wallet_skr">Open SKR Tools</string>
+    <string name="seeker_wallet_close">Back To Keyboard</string>
 
     <!-- new strings should go above the section for gesture data gathering -->
 </resources>
