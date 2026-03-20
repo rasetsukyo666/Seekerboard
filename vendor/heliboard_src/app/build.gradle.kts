@@ -125,7 +125,7 @@ dependencies {
     // kotlin
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-    implementation("com.solanamobile:mobile-wallet-adapter-clientlib:2.0.7")
+    implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.7")
     implementation("com.solanamobile:web3-solana:0.2.5")
     implementation("io.github.funkatronics:multimult:0.2.3")
 

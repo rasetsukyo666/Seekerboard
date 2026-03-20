@@ -15,6 +15,7 @@ import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
 import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
+import helium314.keyboard.latin.R
 import kotlinx.coroutines.launch
 
 class SeekerWalletActivity : ComponentActivity() {
