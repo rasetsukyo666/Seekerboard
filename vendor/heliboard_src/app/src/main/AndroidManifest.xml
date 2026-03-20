@@ -91,7 +91,6 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
             android:name="helium314.keyboard.seeker.SeekerWalletActivity"
             android:theme="@style/platformActivityTheme"
             android:excludeFromRecents="true"
-            android:noHistory="true"
             android:exported="false" />
 
         <activity android:name="helium314.keyboard.keyboard.emoji.EmojiSearchActivity" android:exported="false"
