@@ -2,7 +2,6 @@
 package helium314.keyboard.settings
 
 import android.content.Context
-import android.content.Intent
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,13 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -29,10 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,8 +44,6 @@ import helium314.keyboard.latin.utils.JniUtils
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.latin.utils.UncachedInputMethodManagerUtils
 import helium314.keyboard.latin.utils.previewDark
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun WelcomeWizard(
@@ -63,20 +54,9 @@ fun WelcomeWizard(
     val imm = ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
     fun determineStep(): Int = when {
         !UncachedInputMethodManagerUtils.isThisImeEnabled(ctx, imm) -> 0
-        !UncachedInputMethodManagerUtils.isThisImeCurrent(ctx, imm) -> 2
         else -> 3
     }
     var step by rememberSaveable { mutableIntStateOf(determineStep()) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(step) {
-        if (step == 2)
-            scope.launch {
-                while (step == 2 && !UncachedInputMethodManagerUtils.isThisImeCurrent(ctx, imm)) {
-                    delay(50)
-                }
-                step = 3
-            }
-    }
     val useWideLayout = isWideScreen()
     val stepBackgroundColor = Color(ContextCompat.getColor(ctx, R.color.setup_step_background))
     val textColor = Color(ContextCompat.getColor(ctx, R.color.setup_text_action))
@@ -106,8 +86,7 @@ fun WelcomeWizard(
     fun ColumnScope.Step(step: Int, title: String, instruction: String, actionText: String, icon: Painter, action: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("1", color = if (step == 1) titleColor else textColorDim)
-            Text("2", color = if (step == 2) titleColor else textColorDim)
-            Text("3", color = if (step == 3) titleColor else textColorDim)
+            Text("2", color = if (step == 3) titleColor else textColorDim)
         }
         Column(Modifier
             .background(color = stepBackgroundColor)
@@ -148,39 +127,9 @@ fun WelcomeWizard(
                         intent.addCategory(Intent.CATEGORY_DEFAULT)
                         launcher.launch(intent)
                     }
-                } else if (step == 2) {
-                    Step(
-                        step,
-                        stringResource(R.string.setup_step2_title, appName),
-                        stringResource(R.string.setup_step2_instruction, appName),
-                        stringResource(R.string.setup_step2_action),
-                        painterResource(R.drawable.ic_setup_select),
-                        imm::showInputMethodPicker
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        Modifier.clickable {
-                            launcher.launch(
-                                Intent(ctx, SettingsActivity::class.java)
-                                    .putExtra(SettingsActivity.EXTRA_START_DESTINATION, SettingsDestination.Languages)
-                                    .putExtra(SettingsActivity.EXTRA_SKIP_WELCOME_WIZARD, true)
-                            )
-                        }
-                            .background(color = stepBackgroundColor)
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.ic_settings_languages),
-                            null,
-                            Modifier.padding(end = 6.dp).size(32.dp),
-                            tint = textColor
-                        )
-                        Text(stringResource(R.string.setup_step2_secondary_action), Modifier.weight(1f))
-                    }
                 } else { // step 3
                     Step(
-                        step,
+                        3,
                         stringResource(R.string.setup_step3_title),
                         stringResource(R.string.setup_step3_instruction, appName),
                         stringResource(R.string.setup_step3_action),
