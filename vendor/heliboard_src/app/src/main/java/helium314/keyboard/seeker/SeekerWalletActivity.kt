@@ -8,6 +8,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.View
@@ -17,6 +19,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.funkatronics.encoders.Base58
 import com.google.zxing.BarcodeFormat
@@ -26,6 +29,8 @@ import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
 import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
 import helium314.keyboard.latin.R
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SeekerWalletActivity : ComponentActivity() {
@@ -34,6 +39,7 @@ class SeekerWalletActivity : ComponentActivity() {
     private val rpcService = SeekerSolanaRpcService()
     private val transferService = SeekerTransferService()
     private val snsResolver = SeekerSnsResolver()
+    private var recipientResolutionJob: Job? = null
 
     private val walletAdapter by lazy {
         MobileWalletAdapter(
@@ -65,6 +71,7 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_send) {
             lifecycleScope.launch { sendSol() }
         }
+        bindRecipientResolver()
     }
 
     override fun onResume() {
@@ -77,6 +84,18 @@ class SeekerWalletActivity : ComponentActivity() {
             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             action()
         }
+    }
+
+    private fun bindRecipientResolver() {
+        findViewById<EditText>(R.id.wallet_send_recipient).addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+
+            override fun afterTextChanged(s: Editable?) {
+                scheduleRecipientResolution(s?.toString().orEmpty())
+            }
+        })
     }
 
     private fun bindCurrentSession() {
@@ -245,6 +264,37 @@ class SeekerWalletActivity : ComponentActivity() {
         }
     }
 
+    private fun scheduleRecipientResolution(rawInput: String) {
+        recipientResolutionJob?.cancel()
+        val input = rawInput.trim()
+        val resolutionView = findViewById<TextView>(R.id.wallet_send_resolution)
+        if (input.isBlank()) {
+            resolutionView.isVisible = false
+            return
+        }
+        if (!input.endsWith(".sol", ignoreCase = true)) {
+            resolutionView.isVisible = true
+            resolutionView.text = getString(R.string.seeker_wallet_resolution_direct)
+            return
+        }
+
+        resolutionView.isVisible = true
+        resolutionView.text = getString(R.string.seeker_wallet_resolution_resolving, input)
+        recipientResolutionJob = lifecycleScope.launch {
+            delay(250)
+            try {
+                val resolved = snsResolver.resolveRecipient(input)
+                resolutionView.text = getString(
+                    R.string.seeker_wallet_resolution_resolved,
+                    input,
+                    shortAddress(resolved),
+                )
+            } catch (_: Throwable) {
+                resolutionView.text = getString(R.string.seeker_wallet_resolution_failed, input)
+            }
+        }
+    }
+
     private fun showReceiveQr(address: String) {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -272,11 +322,12 @@ class SeekerWalletActivity : ComponentActivity() {
         container.addView(qrImage)
         container.addView(addressView)
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle(getString(R.string.seeker_wallet_receive))
             .setView(container)
             .setPositiveButton(android.R.string.ok, null)
-            .show()
+            .create()
+        dialog.show()
     }
 
     private fun buildQrBitmap(value: String, sizePx: Int): Bitmap {

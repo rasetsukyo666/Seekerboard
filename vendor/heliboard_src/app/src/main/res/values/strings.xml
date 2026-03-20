@@ -1113,6 +1113,10 @@ New dictionary:
     <string name="seeker_wallet_status_send_success">Sent %1$s SOL to %2$s.</string>
     <string name="seeker_wallet_status_send_success_resolved_target">%1$s (%2$s)</string>
     <string name="seeker_wallet_status_send_failed">Send failed: %1$s</string>
+    <string name="seeker_wallet_resolution_direct">Direct address destination.</string>
+    <string name="seeker_wallet_resolution_resolving">Resolving %1$s…</string>
+    <string name="seeker_wallet_resolution_resolved">%1$s resolves to %2$s</string>
+    <string name="seeker_wallet_resolution_failed">Could not resolve %1$s</string>
     <string name="seeker_wallet_connect">Connect Wallet</string>
     <string name="seeker_wallet_send">Send</string>
     <string name="seeker_wallet_receive">Receive</string>
