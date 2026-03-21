@@ -1123,8 +1123,8 @@ New dictionary:
     <string name="seeker_wallet_address_label">Connected Address</string>
     <string name="seeker_wallet_balance_label">Balance</string>
     <string name="seeker_wallet_balance_placeholder">--</string>
-    <string name="seeker_wallet_token_balance_placeholder_usdc">USDC: --</string>
-    <string name="seeker_wallet_token_balance_placeholder_skr">SKR: --</string>
+    <string name="seeker_wallet_token_balance_placeholder_primary">From token: --</string>
+    <string name="seeker_wallet_token_balance_placeholder_secondary">To token: --</string>
     <string name="seeker_wallet_token_balance_value">%1$s: %2$s</string>
     <string name="seeker_wallet_cluster_label">Cluster</string>
     <string name="seeker_wallet_not_connected">No wallet connected</string>

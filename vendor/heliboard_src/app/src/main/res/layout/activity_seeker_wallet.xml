@@ -28,9 +28,40 @@
             android:textSize="15sp" />
 
         <LinearLayout
+            android:id="@+id/wallet_action_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/wallet_action_send"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_send" />
+
+            <Button
+                android:id="@+id/wallet_action_receive"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_receive" />
+
+            <Button
+                android:id="@+id/wallet_action_swap"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_swap_title" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:background="@drawable/seeker_wallet_card"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -65,7 +96,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="@string/seeker_wallet_token_balance_placeholder_usdc"
+                    android:text="@string/seeker_wallet_token_balance_placeholder_primary"
                     android:textColor="#C9FFF1"
                     android:textSize="13sp" />
 
@@ -74,7 +105,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="@string/seeker_wallet_token_balance_placeholder_skr"
+                    android:text="@string/seeker_wallet_token_balance_placeholder_secondary"
                     android:textColor="#C9FFF1"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -139,110 +170,118 @@
             android:layout_marginTop="20dp"
             android:text="@string/seeker_wallet_connect" />
 
-        <Button
-            android:id="@+id/wallet_send"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_send" />
-
-        <EditText
-            android:id="@+id/wallet_send_recipient"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:autofillHints=""
-            android:background="@drawable/seeker_wallet_card"
-            android:hint="@string/seeker_wallet_send_recipient_hint"
-            android:inputType="textNoSuggestions"
-            android:padding="16dp"
-            android:textColor="#E8FFF9"
-            android:textColorHint="#FF9945FF" />
-
-        <EditText
-            android:id="@+id/wallet_send_amount"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:autofillHints=""
-            android:background="@drawable/seeker_wallet_card"
-            android:hint="@string/seeker_wallet_send_amount_hint"
-            android:inputType="numberDecimal"
-            android:padding="16dp"
-            android:text="0.01"
-            android:textColor="#E8FFF9"
-            android:textColorHint="#FF9945FF" />
-
-        <Button
-            android:id="@+id/wallet_receive"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_receive" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/seeker_wallet_swap_title"
-            android:textColor="#14F195"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/wallet_swap_from_picker"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/seeker_wallet_swap_from_value_default" />
-        </LinearLayout>
-
-        <LinearLayout
+            android:id="@+id/wallet_send_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/wallet_swap_to_picker"
+            <EditText
+                android:id="@+id/wallet_send_recipient"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/seeker_wallet_swap_to_value_default" />
+                android:autofillHints=""
+                android:background="@drawable/seeker_wallet_card"
+                android:hint="@string/seeker_wallet_send_recipient_hint"
+                android:inputType="textNoSuggestions"
+                android:padding="16dp"
+                android:textColor="#E8FFF9"
+                android:textColorHint="#FF9945FF" />
+
+            <EditText
+                android:id="@+id/wallet_send_amount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:autofillHints=""
+                android:background="@drawable/seeker_wallet_card"
+                android:hint="@string/seeker_wallet_send_amount_hint"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:text="0.01"
+                android:textColor="#E8FFF9"
+                android:textColorHint="#FF9945FF" />
+
+            <Button
+                android:id="@+id/wallet_send"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/seeker_wallet_send" />
         </LinearLayout>
 
-        <EditText
-            android:id="@+id/wallet_swap_amount"
+        <LinearLayout
+            android:id="@+id/wallet_swap_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:autofillHints=""
-            android:background="@drawable/seeker_wallet_card"
-            android:hint="@string/seeker_wallet_swap_amount_hint"
-            android:inputType="numberDecimal"
-            android:padding="16dp"
-            android:text="0.01"
-            android:textColor="#E8FFF9"
-            android:textColorHint="#FF9945FF" />
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:visibility="gone">
 
-        <Button
-            android:id="@+id/wallet_swap_quote"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_swap_quote" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/seeker_wallet_swap_title"
+                android:textColor="#14F195"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/wallet_swap_execute"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/seeker_wallet_swap_execute" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/wallet_swap_from_picker"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/seeker_wallet_swap_from_value_default" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/wallet_swap_to_picker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/seeker_wallet_swap_to_value_default" />
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/wallet_swap_amount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:autofillHints=""
+                android:background="@drawable/seeker_wallet_card"
+                android:hint="@string/seeker_wallet_swap_amount_hint"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:text="0.01"
+                android:textColor="#E8FFF9"
+                android:textColorHint="#FF9945FF" />
+
+            <Button
+                android:id="@+id/wallet_swap_quote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/seeker_wallet_swap_quote" />
+
+            <Button
+                android:id="@+id/wallet_swap_execute"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/seeker_wallet_swap_execute" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/wallet_close"

@@ -36,6 +36,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SeekerWalletActivity : ComponentActivity() {
+    private enum class WalletPanel {
+        SEND,
+        SWAP,
+    }
+
     private lateinit var sessionStore: SeekerWalletSessionStore
     private lateinit var activityResultSender: ActivityResultSender
     private val rpcService = SeekerSolanaRpcService()
@@ -48,6 +53,7 @@ class SeekerWalletActivity : ComponentActivity() {
     private var selectedSwapFrom = DEFAULT_FROM_TOKEN
     private var selectedSwapTo = DEFAULT_TO_TOKEN
     private var latestQuote: SeekerJupiterSwapService.JupiterQuote? = null
+    private var activePanel = WalletPanel.SEND
 
     private val walletAdapter by lazy {
         MobileWalletAdapter(
@@ -82,6 +88,15 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_send) {
             lifecycleScope.launch { sendSol() }
         }
+        bindButton(R.id.wallet_action_send) {
+            showPanel(WalletPanel.SEND)
+        }
+        bindButton(R.id.wallet_action_receive) {
+            copyReceiveAddress()
+        }
+        bindButton(R.id.wallet_action_swap) {
+            showPanel(WalletPanel.SWAP)
+        }
         bindButton(R.id.wallet_swap_from_picker) {
             openTokenPicker(isFrom = true)
         }
@@ -96,6 +111,7 @@ class SeekerWalletActivity : ComponentActivity() {
         }
         bindRecipientResolver()
         renderSwapSelection()
+        showPanel(activePanel)
     }
 
     override fun onResume() {
@@ -361,11 +377,11 @@ class SeekerWalletActivity : ComponentActivity() {
 
     private fun updateTokenBalances(usdc: Double?, skr: Double?) {
         findViewById<TextView>(R.id.wallet_usdc_balance).text =
-            if (usdc == null) getString(R.string.seeker_wallet_token_balance_placeholder_usdc)
-            else getString(R.string.seeker_wallet_token_balance_value, "USDC", formatTokenAmount(usdc))
+            if (usdc == null) getString(R.string.seeker_wallet_token_balance_placeholder_primary)
+            else getString(R.string.seeker_wallet_token_balance_value, selectedSwapFrom.symbol, formatTokenAmount(usdc))
         findViewById<TextView>(R.id.wallet_skr_balance).text =
-            if (skr == null) getString(R.string.seeker_wallet_token_balance_placeholder_skr)
-            else getString(R.string.seeker_wallet_token_balance_value, "SKR", formatTokenAmount(skr))
+            if (skr == null) getString(R.string.seeker_wallet_token_balance_placeholder_secondary)
+            else getString(R.string.seeker_wallet_token_balance_value, selectedSwapTo.symbol, formatTokenAmount(skr))
     }
 
     private fun updateStatus(status: String) {
@@ -374,6 +390,16 @@ class SeekerWalletActivity : ComponentActivity() {
 
     private fun updateConnectedState(isConnected: Boolean) {
         findViewById<Button>(R.id.wallet_connect).visibility = if (isConnected) View.GONE else View.VISIBLE
+    }
+
+    private fun showPanel(panel: WalletPanel) {
+        activePanel = panel
+        findViewById<View>(R.id.wallet_send_section).visibility =
+            if (panel == WalletPanel.SEND) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.wallet_swap_section).visibility =
+            if (panel == WalletPanel.SWAP) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.wallet_action_send).alpha = if (panel == WalletPanel.SEND) 1.0f else 0.7f
+        findViewById<Button>(R.id.wallet_action_swap).alpha = if (panel == WalletPanel.SWAP) 1.0f else 0.7f
     }
 
     private fun setBusy(isBusy: Boolean) {
@@ -428,6 +454,12 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<Button>(R.id.wallet_swap_to_picker).text =
             getString(R.string.seeker_wallet_swap_to_value, selectedSwapTo.symbol)
         findViewById<Button>(R.id.wallet_swap_execute).isEnabled = latestQuote != null
+        val address = sessionStore.loadWalletAddress()
+        if (!address.isNullOrBlank()) {
+            lifecycleScope.launch {
+                refreshAllBalances(address, sessionStore.loadCluster())
+            }
+        }
     }
 
     private fun openTokenPicker(isFrom: Boolean) {
@@ -482,14 +514,31 @@ class SeekerWalletActivity : ComponentActivity() {
     }
 
     private suspend fun refreshAllBalances(address: String, cluster: SolanaCluster) {
-        refreshBalance(address, cluster)
+        val solLamports = try {
+            rpcService.getBalance(cluster.rpcUrl, address)
+        } catch (_: Throwable) {
+            null
+        }
+        updateBalance(solLamports)
         try {
-            val usdc = rpcService.getSplTokenBalance(cluster.rpcUrl, address, USDC_MINT)
-            val skr = rpcService.getSplTokenBalance(cluster.rpcUrl, address, SKR_MINT)
-            updateTokenBalances(usdc.amount, skr.amount)
+            val fromBalance = getTokenDisplayBalance(cluster, address, selectedSwapFrom, solLamports)
+            val toBalance = getTokenDisplayBalance(cluster, address, selectedSwapTo, solLamports)
+            updateTokenBalances(fromBalance, toBalance)
         } catch (_: Throwable) {
             updateTokenBalances(null, null)
         }
+    }
+
+    private suspend fun getTokenDisplayBalance(
+        cluster: SolanaCluster,
+        address: String,
+        token: SwapToken,
+        solLamports: Long?,
+    ): Double? {
+        if (token.mint == SOL_MINT) {
+            return solLamports?.div(LAMPORTS_PER_SOL)
+        }
+        return rpcService.getSplTokenBalance(cluster.rpcUrl, address, token.mint).amount
     }
 
     private fun scheduleRecipientResolution(rawInput: String) {
