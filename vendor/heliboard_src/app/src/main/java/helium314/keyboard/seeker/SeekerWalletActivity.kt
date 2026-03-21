@@ -82,7 +82,7 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_disconnect) {
             disconnectWallet()
         }
-        bindButton(R.id.wallet_receive) {
+        bindButton(R.id.wallet_action_receive) {
             copyReceiveAddress()
         }
         bindButton(R.id.wallet_send) {
@@ -409,7 +409,7 @@ class SeekerWalletActivity : ComponentActivity() {
         }
         findViewById<Button>(R.id.wallet_disconnect).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_receive).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_action_receive).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_from_picker).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_to_picker).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_quote).isEnabled = !isBusy
