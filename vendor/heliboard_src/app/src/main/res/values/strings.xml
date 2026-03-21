@@ -1129,6 +1129,17 @@ New dictionary:
     <string name="seeker_wallet_send_amount_hint">Amount in SOL</string>
     <string name="seeker_wallet_close">Back To Keyboard</string>
     <string name="seeker_wallet_disconnect">Disconnect</string>
+    <string name="seeker_wallet_swap_title">Swap</string>
+    <string name="seeker_wallet_swap_target_usdc">USDC</string>
+    <string name="seeker_wallet_swap_target_jup">JUP</string>
+    <string name="seeker_wallet_swap_amount_hint">Amount in SOL to swap</string>
+    <string name="seeker_wallet_swap_quote">Get Quote</string>
+    <string name="seeker_wallet_swap_execute">Swap Now</string>
+    <string name="seeker_wallet_swap_target_selected">Swap target set to %1$s.</string>
+    <string name="seeker_wallet_swap_quote_ready">%1$s SOL -> about %2$s %3$s.</string>
+    <string name="seeker_wallet_swap_quote_missing">Get a swap quote first.</string>
+    <string name="seeker_wallet_swap_success">Swap submitted for %1$s.</string>
+    <string name="seeker_wallet_swap_failed">Swap failed: %1$s</string>
 
     <!-- new strings should go above the section for gesture data gathering -->
 </resources>

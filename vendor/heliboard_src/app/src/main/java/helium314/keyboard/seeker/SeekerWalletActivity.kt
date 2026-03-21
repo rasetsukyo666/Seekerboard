@@ -27,7 +27,9 @@ import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
 import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
+import helium314.keyboard.latin.BuildConfig
 import helium314.keyboard.latin.R
+import java.math.BigDecimal
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,8 +40,11 @@ class SeekerWalletActivity : ComponentActivity() {
     private val rpcService = SeekerSolanaRpcService()
     private val transferService = SeekerTransferService()
     private val snsResolver = SeekerSnsResolver()
+    private val swapService = SeekerJupiterSwapService(BuildConfig.JUPITER_API_KEY)
     private var recipientResolutionJob: Job? = null
     private var defaultStatusMessage: String = ""
+    private var selectedSwapTarget = SwapTarget.USDC
+    private var latestQuote: SeekerJupiterSwapService.JupiterQuote? = null
 
     private val walletAdapter by lazy {
         MobileWalletAdapter(
@@ -74,7 +79,20 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_send) {
             lifecycleScope.launch { sendSol() }
         }
+        bindButton(R.id.wallet_swap_target_usdc) {
+            selectSwapTarget(SwapTarget.USDC)
+        }
+        bindButton(R.id.wallet_swap_target_jup) {
+            selectSwapTarget(SwapTarget.JUP)
+        }
+        bindButton(R.id.wallet_swap_quote) {
+            lifecycleScope.launch { quoteSwap() }
+        }
+        bindButton(R.id.wallet_swap_execute) {
+            lifecycleScope.launch { executeSwap() }
+        }
         bindRecipientResolver()
+        selectSwapTarget(selectedSwapTarget)
     }
 
     override fun onResume() {
@@ -170,6 +188,87 @@ class SeekerWalletActivity : ComponentActivity() {
         updateStatus(getString(R.string.seeker_wallet_status_receive, shortAddress(address)))
     }
 
+    private suspend fun quoteSwap() {
+        val address = sessionStore.loadWalletAddress()
+        if (address.isNullOrBlank()) {
+            updateStatus(getString(R.string.seeker_wallet_status_need_connect))
+            return
+        }
+        val amountSol = findViewById<EditText>(R.id.wallet_swap_amount).text.toString().trim()
+        val amountLamports = amountSol.toDoubleOrNull()?.times(LAMPORTS_PER_SOL)?.toLong() ?: 0L
+        if (amountLamports <= 0L) {
+            updateStatus(getString(R.string.seeker_wallet_status_invalid_amount))
+            return
+        }
+
+        setBusy(true)
+        try {
+            val quote = swapService.getQuote(
+                inputMint = SOL_MINT,
+                outputMint = selectedSwapTarget.mint,
+                amount = amountLamports,
+            )
+            latestQuote = quote
+            val outputAmount = BigDecimal(quote.outAmount)
+                .movePointLeft(selectedSwapTarget.decimals)
+                .stripTrailingZeros()
+                .toPlainString()
+            updateStatus(
+                getString(
+                    R.string.seeker_wallet_swap_quote_ready,
+                    amountSol,
+                    outputAmount,
+                    selectedSwapTarget.symbol,
+                )
+            )
+        } catch (error: Throwable) {
+            latestQuote = null
+            updateStatus(getString(R.string.seeker_wallet_swap_failed, error.message ?: "quote failed"))
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    private suspend fun executeSwap() {
+        val address = sessionStore.loadWalletAddress()
+        if (address.isNullOrBlank()) {
+            updateStatus(getString(R.string.seeker_wallet_status_need_connect))
+            return
+        }
+        val quote = latestQuote
+        if (quote == null) {
+            updateStatus(getString(R.string.seeker_wallet_swap_quote_missing))
+            return
+        }
+
+        setBusy(true)
+        try {
+            val txBytes = swapService.buildSwapTransaction(quote, address)
+            when (val result = walletAdapter.transact(activityResultSender) {
+                signAndSendTransactions(arrayOf(txBytes))
+            }) {
+                is TransactionResult.Success -> {
+                    result.authResult.authToken?.let {
+                        sessionStore.saveAuthToken(it)
+                        walletAdapter.authToken = it
+                    }
+                    updateStatus(getString(R.string.seeker_wallet_swap_success, selectedSwapTarget.symbol))
+                    refreshBalance(address, sessionStore.loadCluster())
+                }
+                is TransactionResult.NoWalletFound -> {
+                    updateStatus(getString(R.string.seeker_wallet_status_no_wallet))
+                }
+                is TransactionResult.Failure -> {
+                    updateStatus(getString(R.string.seeker_wallet_swap_failed, result.e.message ?: "unknown error"))
+                }
+            }
+        } catch (error: Throwable) {
+            updateStatus(getString(R.string.seeker_wallet_swap_failed, error.message ?: "unexpected error"))
+        } finally {
+            setBusy(false)
+        }
+    }
+
     private suspend fun sendSol() {
         val address = sessionStore.loadWalletAddress()
         if (address.isNullOrBlank()) {
@@ -258,16 +357,33 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<Button>(R.id.wallet_disconnect).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_receive).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_target_usdc).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_target_jup).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_quote).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_execute).isEnabled = !isBusy && latestQuote != null
     }
 
     private fun disconnectWallet() {
         sessionStore.clear()
         walletAdapter.authToken = null
+        latestQuote = null
         recipientResolutionJob?.cancel()
         findViewById<EditText>(R.id.wallet_send_recipient).text?.clear()
         findViewById<EditText>(R.id.wallet_send_amount).text?.clear()
+        findViewById<EditText>(R.id.wallet_swap_amount).text?.clear()
         defaultStatusMessage = getString(R.string.seeker_wallet_status_ready)
         bindCurrentSession()
+    }
+
+    private fun selectSwapTarget(target: SwapTarget) {
+        selectedSwapTarget = target
+        latestQuote = null
+        val usdc = findViewById<Button>(R.id.wallet_swap_target_usdc)
+        val jup = findViewById<Button>(R.id.wallet_swap_target_jup)
+        usdc.alpha = if (target == SwapTarget.USDC) 1.0f else 0.65f
+        jup.alpha = if (target == SwapTarget.JUP) 1.0f else 0.65f
+        updateStatus(getString(R.string.seeker_wallet_swap_target_selected, target.symbol))
+        setBusy(false)
     }
 
     private suspend fun refreshBalance(address: String, cluster: SolanaCluster) {
@@ -369,5 +485,11 @@ class SeekerWalletActivity : ComponentActivity() {
         const val IDENTITY_URI = "https://seekerkeyboard.app"
         const val ICON_URI = "favicon.ico"
         const val LAMPORTS_PER_SOL = 1_000_000_000.0
+        const val SOL_MINT = "So11111111111111111111111111111111111111112"
+    }
+
+    private enum class SwapTarget(val mint: String, val symbol: String, val decimals: Int) {
+        USDC("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "USDC", 6),
+        JUP("JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", "JUP", 6),
     }
 }

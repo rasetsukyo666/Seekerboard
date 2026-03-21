@@ -15,6 +15,7 @@ android {
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
     val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
     val releaseStoreType = System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
+    val jupiterApiKey = System.getenv("JUPITER_API_KEY") ?: "3ccdd3f7-12f6-4506-b552-125bf94c7129"
 
     defaultConfig {
         applicationId = "com.rasetsukyo.seekerboard"
@@ -22,6 +23,7 @@ android {
         targetSdk = 35
         versionCode = 3900
         versionName = "3.9-beta1"
+        buildConfigField("String", "JUPITER_API_KEY", "\"$jupiterApiKey\"")
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
