@@ -261,9 +261,11 @@ class SeekerWalletActivity : ComponentActivity() {
     }
 
     private fun disconnectWallet() {
-        sessionStore.saveAuthToken(null)
-        sessionStore.saveWalletAddress(null)
+        sessionStore.clear()
         walletAdapter.authToken = null
+        recipientResolutionJob?.cancel()
+        findViewById<EditText>(R.id.wallet_send_recipient).text?.clear()
+        findViewById<EditText>(R.id.wallet_send_amount).text?.clear()
         defaultStatusMessage = getString(R.string.seeker_wallet_status_ready)
         bindCurrentSession()
     }
