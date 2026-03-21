@@ -178,9 +178,17 @@
             android:orientation="horizontal">
 
             <Button
+                android:id="@+id/wallet_swap_from_sol"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_swap_target_sol" />
+
+            <Button
                 android:id="@+id/wallet_swap_target_usdc"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:text="@string/seeker_wallet_swap_target_usdc" />
 
@@ -190,7 +198,37 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
-                android:text="@string/seeker_wallet_swap_target_jup" />
+                android:text="@string/seeker_wallet_swap_target_skr" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/wallet_swap_to_sol"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_swap_to_sol" />
+
+            <Button
+                android:id="@+id/wallet_swap_to_usdc"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_swap_to_usdc" />
+
+            <Button
+                android:id="@+id/wallet_swap_to_skr"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/seeker_wallet_swap_to_skr" />
         </LinearLayout>
 
         <EditText

@@ -43,7 +43,8 @@ class SeekerWalletActivity : ComponentActivity() {
     private val swapService = SeekerJupiterSwapService(BuildConfig.JUPITER_API_KEY)
     private var recipientResolutionJob: Job? = null
     private var defaultStatusMessage: String = ""
-    private var selectedSwapTarget = SwapTarget.USDC
+    private var selectedSwapFrom = SwapToken.SOL
+    private var selectedSwapTo = SwapToken.USDC
     private var latestQuote: SeekerJupiterSwapService.JupiterQuote? = null
 
     private val walletAdapter by lazy {
@@ -80,10 +81,22 @@ class SeekerWalletActivity : ComponentActivity() {
             lifecycleScope.launch { sendSol() }
         }
         bindButton(R.id.wallet_swap_target_usdc) {
-            selectSwapTarget(SwapTarget.USDC)
+            selectSwapFrom(SwapToken.USDC)
         }
         bindButton(R.id.wallet_swap_target_jup) {
-            selectSwapTarget(SwapTarget.JUP)
+            selectSwapFrom(SwapToken.SKR)
+        }
+        bindButton(R.id.wallet_swap_from_sol) {
+            selectSwapFrom(SwapToken.SOL)
+        }
+        bindButton(R.id.wallet_swap_to_sol) {
+            selectSwapTo(SwapToken.SOL)
+        }
+        bindButton(R.id.wallet_swap_to_usdc) {
+            selectSwapTo(SwapToken.USDC)
+        }
+        bindButton(R.id.wallet_swap_to_skr) {
+            selectSwapTo(SwapToken.SKR)
         }
         bindButton(R.id.wallet_swap_quote) {
             lifecycleScope.launch { quoteSwap() }
@@ -92,7 +105,7 @@ class SeekerWalletActivity : ComponentActivity() {
             lifecycleScope.launch { executeSwap() }
         }
         bindRecipientResolver()
-        selectSwapTarget(selectedSwapTarget)
+        renderSwapSelection()
     }
 
     override fun onResume() {
@@ -195,8 +208,12 @@ class SeekerWalletActivity : ComponentActivity() {
             return
         }
         val amountSol = findViewById<EditText>(R.id.wallet_swap_amount).text.toString().trim()
-        val amountLamports = amountSol.toDoubleOrNull()?.times(LAMPORTS_PER_SOL)?.toLong() ?: 0L
-        if (amountLamports <= 0L) {
+        val amountBaseUnits = amountSol.toDoubleOrNull()?.times(selectedSwapFrom.multiplier)?.toLong() ?: 0L
+        if (selectedSwapFrom == selectedSwapTo) {
+            updateStatus(getString(R.string.seeker_wallet_swap_same_token))
+            return
+        }
+        if (amountBaseUnits <= 0L) {
             updateStatus(getString(R.string.seeker_wallet_status_invalid_amount))
             return
         }
@@ -204,21 +221,22 @@ class SeekerWalletActivity : ComponentActivity() {
         setBusy(true)
         try {
             val quote = swapService.getQuote(
-                inputMint = SOL_MINT,
-                outputMint = selectedSwapTarget.mint,
-                amount = amountLamports,
+                inputMint = selectedSwapFrom.mint,
+                outputMint = selectedSwapTo.mint,
+                amount = amountBaseUnits,
             )
             latestQuote = quote
             val outputAmount = BigDecimal(quote.outAmount)
-                .movePointLeft(selectedSwapTarget.decimals)
+                .movePointLeft(selectedSwapTo.decimals)
                 .stripTrailingZeros()
                 .toPlainString()
             updateStatus(
                 getString(
                     R.string.seeker_wallet_swap_quote_ready,
                     amountSol,
+                    selectedSwapFrom.symbol,
                     outputAmount,
-                    selectedSwapTarget.symbol,
+                    selectedSwapTo.symbol,
                 )
             )
         } catch (error: Throwable) {
@@ -252,7 +270,7 @@ class SeekerWalletActivity : ComponentActivity() {
                         sessionStore.saveAuthToken(it)
                         walletAdapter.authToken = it
                     }
-                    updateStatus(getString(R.string.seeker_wallet_swap_success, selectedSwapTarget.symbol))
+                    updateStatus(getString(R.string.seeker_wallet_swap_success, selectedSwapTo.symbol))
                     refreshBalance(address, sessionStore.loadCluster())
                 }
                 is TransactionResult.NoWalletFound -> {
@@ -357,8 +375,12 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<Button>(R.id.wallet_disconnect).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_receive).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_from_sol).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_target_usdc).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_target_jup).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_to_sol).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_to_usdc).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_to_skr).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_quote).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_execute).isEnabled = !isBusy && latestQuote != null
     }
@@ -375,15 +397,49 @@ class SeekerWalletActivity : ComponentActivity() {
         bindCurrentSession()
     }
 
-    private fun selectSwapTarget(target: SwapTarget) {
-        selectedSwapTarget = target
+    private fun selectSwapFrom(token: SwapToken) {
+        selectedSwapFrom = token
+        if (selectedSwapFrom == selectedSwapTo) {
+            selectedSwapTo = when (token) {
+                SwapToken.SOL -> SwapToken.USDC
+                SwapToken.USDC -> SwapToken.SKR
+                SwapToken.SKR -> SwapToken.SOL
+            }
+        }
         latestQuote = null
-        val usdc = findViewById<Button>(R.id.wallet_swap_target_usdc)
-        val jup = findViewById<Button>(R.id.wallet_swap_target_jup)
-        usdc.alpha = if (target == SwapTarget.USDC) 1.0f else 0.65f
-        jup.alpha = if (target == SwapTarget.JUP) 1.0f else 0.65f
-        updateStatus(getString(R.string.seeker_wallet_swap_target_selected, target.symbol))
-        setBusy(false)
+        renderSwapSelection()
+        updateStatus(getString(R.string.seeker_wallet_swap_pair_selected, selectedSwapFrom.symbol, selectedSwapTo.symbol))
+    }
+
+    private fun selectSwapTo(token: SwapToken) {
+        selectedSwapTo = token
+        if (selectedSwapFrom == selectedSwapTo) {
+            selectedSwapFrom = when (token) {
+                SwapToken.SOL -> SwapToken.USDC
+                SwapToken.USDC -> SwapToken.SOL
+                SwapToken.SKR -> SwapToken.SOL
+            }
+        }
+        latestQuote = null
+        renderSwapSelection()
+        updateStatus(getString(R.string.seeker_wallet_swap_pair_selected, selectedSwapFrom.symbol, selectedSwapTo.symbol))
+    }
+
+    private fun renderSwapSelection() {
+        val fromSol = findViewById<Button>(R.id.wallet_swap_from_sol)
+        val fromUsdc = findViewById<Button>(R.id.wallet_swap_target_usdc)
+        val fromSkr = findViewById<Button>(R.id.wallet_swap_target_jup)
+        val toSol = findViewById<Button>(R.id.wallet_swap_to_sol)
+        val toUsdc = findViewById<Button>(R.id.wallet_swap_to_usdc)
+        val toSkr = findViewById<Button>(R.id.wallet_swap_to_skr)
+
+        fromSol.alpha = if (selectedSwapFrom == SwapToken.SOL) 1.0f else 0.65f
+        fromUsdc.alpha = if (selectedSwapFrom == SwapToken.USDC) 1.0f else 0.65f
+        fromSkr.alpha = if (selectedSwapFrom == SwapToken.SKR) 1.0f else 0.65f
+        toSol.alpha = if (selectedSwapTo == SwapToken.SOL) 1.0f else 0.65f
+        toUsdc.alpha = if (selectedSwapTo == SwapToken.USDC) 1.0f else 0.65f
+        toSkr.alpha = if (selectedSwapTo == SwapToken.SKR) 1.0f else 0.65f
+        findViewById<Button>(R.id.wallet_swap_execute).isEnabled = latestQuote != null
     }
 
     private suspend fun refreshBalance(address: String, cluster: SolanaCluster) {
@@ -485,11 +541,14 @@ class SeekerWalletActivity : ComponentActivity() {
         const val IDENTITY_URI = "https://seekerkeyboard.app"
         const val ICON_URI = "favicon.ico"
         const val LAMPORTS_PER_SOL = 1_000_000_000.0
-        const val SOL_MINT = "So11111111111111111111111111111111111111112"
     }
 
-    private enum class SwapTarget(val mint: String, val symbol: String, val decimals: Int) {
+    private enum class SwapToken(val mint: String, val symbol: String, val decimals: Int) {
+        SOL("So11111111111111111111111111111111111111112", "SOL", 9),
         USDC("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "USDC", 6),
-        JUP("JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", "JUP", 6),
+        SKR("SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3", "SKR", 6);
+
+        val multiplier: Double
+            get() = Math.pow(10.0, decimals.toDouble())
     }
 }

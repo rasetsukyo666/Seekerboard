@@ -1130,16 +1130,21 @@ New dictionary:
     <string name="seeker_wallet_close">Back To Keyboard</string>
     <string name="seeker_wallet_disconnect">Disconnect</string>
     <string name="seeker_wallet_swap_title">Swap</string>
+    <string name="seeker_wallet_swap_target_sol">From SOL</string>
     <string name="seeker_wallet_swap_target_usdc">USDC</string>
-    <string name="seeker_wallet_swap_target_jup">JUP</string>
-    <string name="seeker_wallet_swap_amount_hint">Amount in SOL to swap</string>
+    <string name="seeker_wallet_swap_target_skr">SKR</string>
+    <string name="seeker_wallet_swap_to_sol">To SOL</string>
+    <string name="seeker_wallet_swap_to_usdc">To USDC</string>
+    <string name="seeker_wallet_swap_to_skr">To SKR</string>
+    <string name="seeker_wallet_swap_amount_hint">Amount to swap</string>
     <string name="seeker_wallet_swap_quote">Get Quote</string>
     <string name="seeker_wallet_swap_execute">Swap Now</string>
-    <string name="seeker_wallet_swap_target_selected">Swap target set to %1$s.</string>
-    <string name="seeker_wallet_swap_quote_ready">%1$s SOL -> about %2$s %3$s.</string>
+    <string name="seeker_wallet_swap_pair_selected">%1$s -> %2$s selected.</string>
+    <string name="seeker_wallet_swap_quote_ready">%1$s %2$s -> about %3$s %4$s.</string>
     <string name="seeker_wallet_swap_quote_missing">Get a swap quote first.</string>
     <string name="seeker_wallet_swap_success">Swap submitted for %1$s.</string>
     <string name="seeker_wallet_swap_failed">Swap failed: %1$s</string>
+    <string name="seeker_wallet_swap_same_token">Choose different from/to tokens.</string>
 
     <!-- new strings should go above the section for gesture data gathering -->
 </resources>
