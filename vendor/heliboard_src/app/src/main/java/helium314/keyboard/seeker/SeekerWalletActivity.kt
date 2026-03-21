@@ -100,6 +100,9 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_swap_from_picker) {
             openTokenPicker(isFrom = true)
         }
+        bindButton(R.id.wallet_swap_invert) {
+            invertSwapPair()
+        }
         bindButton(R.id.wallet_swap_to_picker) {
             openTokenPicker(isFrom = false)
         }
@@ -411,6 +414,7 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_action_receive).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_from_picker).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_invert).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_to_picker).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_quote).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_execute).isEnabled = !isBusy && latestQuote != null
@@ -460,6 +464,15 @@ class SeekerWalletActivity : ComponentActivity() {
                 refreshAllBalances(address, sessionStore.loadCluster())
             }
         }
+    }
+
+    private fun invertSwapPair() {
+        val previousFrom = selectedSwapFrom
+        selectedSwapFrom = selectedSwapTo
+        selectedSwapTo = previousFrom
+        latestQuote = null
+        renderSwapSelection()
+        updateStatus(getString(R.string.seeker_wallet_swap_pair_selected, selectedSwapFrom.symbol, selectedSwapTo.symbol))
     }
 
     private fun openTokenPicker(isFrom: Boolean) {

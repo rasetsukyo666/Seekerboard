@@ -1139,6 +1139,7 @@ New dictionary:
     <string name="seeker_wallet_swap_to_value_default">To: USDC</string>
     <string name="seeker_wallet_swap_from_value">From: %1$s</string>
     <string name="seeker_wallet_swap_to_value">To: %1$s</string>
+    <string name="seeker_wallet_swap_invert">⬆️⬇️</string>
     <string name="seeker_wallet_swap_amount_hint">Amount to swap</string>
     <string name="seeker_wallet_swap_quote">Get Quote</string>
     <string name="seeker_wallet_swap_execute">Swap Now</string>
