@@ -111,6 +111,14 @@ class SeekerWalletActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         bindCurrentSession()
+        val address = sessionStore.loadWalletAddress()
+        if (!address.isNullOrBlank()) {
+            lifecycleScope.launch {
+                delay(300)
+                refreshAllBalances(address, sessionStore.loadCluster())
+                latestQuote = null
+            }
+        }
     }
 
     private fun bindButton(id: Int, action: () -> Unit) {
@@ -146,9 +154,10 @@ class SeekerWalletActivity : ComponentActivity() {
         updateStatus(defaultStatusMessage)
         if (address.isNullOrBlank()) {
             updateBalance(null)
+            updateTokenBalances(null, null)
         } else {
             lifecycleScope.launch {
-                refreshBalance(address, cluster)
+                refreshAllBalances(address, cluster)
             }
         }
     }
@@ -171,7 +180,7 @@ class SeekerWalletActivity : ComponentActivity() {
                     walletAdapter.authToken = result.authResult.authToken
                     updateAddress(address)
                     updateConnectedState(true)
-                    refreshBalance(address, sessionStore.loadCluster())
+                    refreshAllBalances(address, sessionStore.loadCluster())
                     defaultStatusMessage = getString(R.string.seeker_wallet_status_connected, shortAddress(address))
                     updateStatus(defaultStatusMessage)
                 }
@@ -271,7 +280,7 @@ class SeekerWalletActivity : ComponentActivity() {
                         walletAdapter.authToken = it
                     }
                     updateStatus(getString(R.string.seeker_wallet_swap_success, selectedSwapTo.symbol))
-                    refreshBalance(address, sessionStore.loadCluster())
+                    refreshAllBalances(address, sessionStore.loadCluster())
                 }
                 is TransactionResult.NoWalletFound -> {
                     updateStatus(getString(R.string.seeker_wallet_status_no_wallet))
@@ -357,6 +366,15 @@ class SeekerWalletActivity : ComponentActivity() {
             String.format("%.4f SOL", balanceLamports / LAMPORTS_PER_SOL)
         }
         findViewById<TextView>(R.id.wallet_balance).text = balanceText
+    }
+
+    private fun updateTokenBalances(usdc: Double?, skr: Double?) {
+        findViewById<TextView>(R.id.wallet_usdc_balance).text =
+            if (usdc == null) getString(R.string.seeker_wallet_token_balance_placeholder_usdc)
+            else getString(R.string.seeker_wallet_token_balance_value, "USDC", formatTokenAmount(usdc))
+        findViewById<TextView>(R.id.wallet_skr_balance).text =
+            if (skr == null) getString(R.string.seeker_wallet_token_balance_placeholder_skr)
+            else getString(R.string.seeker_wallet_token_balance_value, "SKR", formatTokenAmount(skr))
     }
 
     private fun updateStatus(status: String) {
@@ -450,6 +468,17 @@ class SeekerWalletActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun refreshAllBalances(address: String, cluster: SolanaCluster) {
+        refreshBalance(address, cluster)
+        try {
+            val usdc = rpcService.getSplTokenBalance(cluster.rpcUrl, address, USDC_MINT)
+            val skr = rpcService.getSplTokenBalance(cluster.rpcUrl, address, SKR_MINT)
+            updateTokenBalances(usdc.amount, skr.amount)
+        } catch (_: Throwable) {
+            updateTokenBalances(null, null)
+        }
+    }
+
     private fun scheduleRecipientResolution(rawInput: String) {
         recipientResolutionJob?.cancel()
         val input = rawInput.trim()
@@ -536,17 +565,23 @@ class SeekerWalletActivity : ComponentActivity() {
         return if (address.length <= 10) address else address.take(4) + "..." + address.takeLast(4)
     }
 
+    private fun formatTokenAmount(value: Double): String {
+        return String.format("%.4f", value)
+    }
+
     private companion object {
         const val IDENTITY_NAME = "Seekerboard"
         const val IDENTITY_URI = "https://seekerkeyboard.app"
         const val ICON_URI = "favicon.ico"
         const val LAMPORTS_PER_SOL = 1_000_000_000.0
+        const val USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        const val SKR_MINT = "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3"
     }
 
     private enum class SwapToken(val mint: String, val symbol: String, val decimals: Int) {
         SOL("So11111111111111111111111111111111111111112", "SOL", 9),
-        USDC("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "USDC", 6),
-        SKR("SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3", "SKR", 6);
+        USDC(USDC_MINT, "USDC", 6),
+        SKR(SKR_MINT, "SKR", 6);
 
         val multiplier: Double
             get() = Math.pow(10.0, decimals.toDouble())

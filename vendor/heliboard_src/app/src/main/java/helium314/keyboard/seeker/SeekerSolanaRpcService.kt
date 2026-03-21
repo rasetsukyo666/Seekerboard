@@ -33,6 +33,36 @@ class SeekerSolanaRpcService {
             .getLong("value")
     }
 
+    suspend fun getSplTokenBalance(
+        rpcUrl: String,
+        ownerAddress: String,
+        mintAddress: String,
+    ): TokenBalance = withContext(Dispatchers.IO) {
+        val response = post(
+            rpcUrl = rpcUrl,
+            method = "getTokenAccountsByOwner",
+            params = JSONArray()
+                .put(ownerAddress)
+                .put(JSONObject().put("mint", mintAddress))
+                .put(JSONObject().put("encoding", "jsonParsed")),
+        )
+
+        val accounts = response.getJSONObject("result").getJSONArray("value")
+        var amount = 0.0
+        var decimals = 0
+        for (i in 0 until accounts.length()) {
+            val tokenAmount = accounts.getJSONObject(i)
+                .getJSONObject("account")
+                .getJSONObject("data")
+                .getJSONObject("parsed")
+                .getJSONObject("info")
+                .getJSONObject("tokenAmount")
+            amount += tokenAmount.optDouble("uiAmount", 0.0)
+            decimals = tokenAmount.optInt("decimals", decimals)
+        }
+        TokenBalance(amount = amount, decimals = decimals)
+    }
+
     private fun post(
         rpcUrl: String,
         method: String,
@@ -65,4 +95,9 @@ class SeekerSolanaRpcService {
         }
         return json
     }
+
+    data class TokenBalance(
+        val amount: Double,
+        val decimals: Int,
+    )
 }

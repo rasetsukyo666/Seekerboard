@@ -59,6 +59,24 @@
                     android:textColor="#FFFFFF"
                     android:textSize="26sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/wallet_usdc_balance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/seeker_wallet_token_balance_placeholder_usdc"
+                    android:textColor="#C9FFF1"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/wallet_skr_balance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/seeker_wallet_token_balance_placeholder_skr"
+                    android:textColor="#C9FFF1"
+                    android:textSize="13sp" />
             </LinearLayout>
 
             <LinearLayout
