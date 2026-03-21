@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.DialogInterface
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -41,10 +42,11 @@ class SeekerWalletActivity : ComponentActivity() {
     private val transferService = SeekerTransferService()
     private val snsResolver = SeekerSnsResolver()
     private val swapService = SeekerJupiterSwapService(BuildConfig.JUPITER_API_KEY)
+    private val tokenService = SeekerJupiterTokenService(BuildConfig.JUPITER_API_KEY)
     private var recipientResolutionJob: Job? = null
     private var defaultStatusMessage: String = ""
-    private var selectedSwapFrom = SwapToken.SOL
-    private var selectedSwapTo = SwapToken.USDC
+    private var selectedSwapFrom = DEFAULT_FROM_TOKEN
+    private var selectedSwapTo = DEFAULT_TO_TOKEN
     private var latestQuote: SeekerJupiterSwapService.JupiterQuote? = null
 
     private val walletAdapter by lazy {
@@ -80,23 +82,11 @@ class SeekerWalletActivity : ComponentActivity() {
         bindButton(R.id.wallet_send) {
             lifecycleScope.launch { sendSol() }
         }
-        bindButton(R.id.wallet_swap_target_usdc) {
-            selectSwapFrom(SwapToken.USDC)
+        bindButton(R.id.wallet_swap_from_picker) {
+            openTokenPicker(isFrom = true)
         }
-        bindButton(R.id.wallet_swap_target_jup) {
-            selectSwapFrom(SwapToken.SKR)
-        }
-        bindButton(R.id.wallet_swap_from_sol) {
-            selectSwapFrom(SwapToken.SOL)
-        }
-        bindButton(R.id.wallet_swap_to_sol) {
-            selectSwapTo(SwapToken.SOL)
-        }
-        bindButton(R.id.wallet_swap_to_usdc) {
-            selectSwapTo(SwapToken.USDC)
-        }
-        bindButton(R.id.wallet_swap_to_skr) {
-            selectSwapTo(SwapToken.SKR)
+        bindButton(R.id.wallet_swap_to_picker) {
+            openTokenPicker(isFrom = false)
         }
         bindButton(R.id.wallet_swap_quote) {
             lifecycleScope.launch { quoteSwap() }
@@ -117,6 +107,7 @@ class SeekerWalletActivity : ComponentActivity() {
                 delay(300)
                 refreshAllBalances(address, sessionStore.loadCluster())
                 latestQuote = null
+                updateStatus(defaultStatusMessage)
             }
         }
     }
@@ -218,7 +209,7 @@ class SeekerWalletActivity : ComponentActivity() {
         }
         val amountSol = findViewById<EditText>(R.id.wallet_swap_amount).text.toString().trim()
         val amountBaseUnits = amountSol.toDoubleOrNull()?.times(selectedSwapFrom.multiplier)?.toLong() ?: 0L
-        if (selectedSwapFrom == selectedSwapTo) {
+        if (selectedSwapFrom.mint == selectedSwapTo.mint) {
             updateStatus(getString(R.string.seeker_wallet_swap_same_token))
             return
         }
@@ -393,12 +384,8 @@ class SeekerWalletActivity : ComponentActivity() {
         findViewById<Button>(R.id.wallet_disconnect).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_send).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_receive).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_swap_from_sol).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_swap_target_usdc).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_swap_target_jup).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_swap_to_sol).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_swap_to_usdc).isEnabled = !isBusy
-        findViewById<Button>(R.id.wallet_swap_to_skr).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_from_picker).isEnabled = !isBusy
+        findViewById<Button>(R.id.wallet_swap_to_picker).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_quote).isEnabled = !isBusy
         findViewById<Button>(R.id.wallet_swap_execute).isEnabled = !isBusy && latestQuote != null
     }
@@ -417,12 +404,8 @@ class SeekerWalletActivity : ComponentActivity() {
 
     private fun selectSwapFrom(token: SwapToken) {
         selectedSwapFrom = token
-        if (selectedSwapFrom == selectedSwapTo) {
-            selectedSwapTo = when (token) {
-                SwapToken.SOL -> SwapToken.USDC
-                SwapToken.USDC -> SwapToken.SKR
-                SwapToken.SKR -> SwapToken.SOL
-            }
+        if (selectedSwapFrom.mint == selectedSwapTo.mint) {
+            selectedSwapTo = DEFAULT_TO_TOKEN
         }
         latestQuote = null
         renderSwapSelection()
@@ -431,12 +414,8 @@ class SeekerWalletActivity : ComponentActivity() {
 
     private fun selectSwapTo(token: SwapToken) {
         selectedSwapTo = token
-        if (selectedSwapFrom == selectedSwapTo) {
-            selectedSwapFrom = when (token) {
-                SwapToken.SOL -> SwapToken.USDC
-                SwapToken.USDC -> SwapToken.SOL
-                SwapToken.SKR -> SwapToken.SOL
-            }
+        if (selectedSwapFrom.mint == selectedSwapTo.mint) {
+            selectedSwapFrom = DEFAULT_FROM_TOKEN
         }
         latestQuote = null
         renderSwapSelection()
@@ -444,20 +423,54 @@ class SeekerWalletActivity : ComponentActivity() {
     }
 
     private fun renderSwapSelection() {
-        val fromSol = findViewById<Button>(R.id.wallet_swap_from_sol)
-        val fromUsdc = findViewById<Button>(R.id.wallet_swap_target_usdc)
-        val fromSkr = findViewById<Button>(R.id.wallet_swap_target_jup)
-        val toSol = findViewById<Button>(R.id.wallet_swap_to_sol)
-        val toUsdc = findViewById<Button>(R.id.wallet_swap_to_usdc)
-        val toSkr = findViewById<Button>(R.id.wallet_swap_to_skr)
-
-        fromSol.alpha = if (selectedSwapFrom == SwapToken.SOL) 1.0f else 0.65f
-        fromUsdc.alpha = if (selectedSwapFrom == SwapToken.USDC) 1.0f else 0.65f
-        fromSkr.alpha = if (selectedSwapFrom == SwapToken.SKR) 1.0f else 0.65f
-        toSol.alpha = if (selectedSwapTo == SwapToken.SOL) 1.0f else 0.65f
-        toUsdc.alpha = if (selectedSwapTo == SwapToken.USDC) 1.0f else 0.65f
-        toSkr.alpha = if (selectedSwapTo == SwapToken.SKR) 1.0f else 0.65f
+        findViewById<Button>(R.id.wallet_swap_from_picker).text =
+            getString(R.string.seeker_wallet_swap_from_value, selectedSwapFrom.symbol)
+        findViewById<Button>(R.id.wallet_swap_to_picker).text =
+            getString(R.string.seeker_wallet_swap_to_value, selectedSwapTo.symbol)
         findViewById<Button>(R.id.wallet_swap_execute).isEnabled = latestQuote != null
+    }
+
+    private fun openTokenPicker(isFrom: Boolean) {
+        val input = EditText(this).apply {
+            hint = getString(R.string.seeker_wallet_token_search_hint)
+            setText(if (isFrom) selectedSwapFrom.symbol else selectedSwapTo.symbol)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(if (isFrom) getString(R.string.seeker_wallet_swap_from_title) else getString(R.string.seeker_wallet_swap_to_title))
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.seeker_wallet_token_search_go) { _: DialogInterface, _: Int ->
+                lifecycleScope.launch {
+                    searchAndSelectToken(input.text.toString(), isFrom)
+                }
+            }
+            .show()
+    }
+
+    private suspend fun searchAndSelectToken(query: String, isFrom: Boolean) {
+        if (query.isBlank()) return
+        updateStatus(getString(R.string.seeker_wallet_token_searching, query))
+        try {
+            val results = tokenService.searchTokens(query).take(8)
+            if (results.isEmpty()) {
+                updateStatus(getString(R.string.seeker_wallet_token_search_empty, query))
+                return
+            }
+            val labels = results.map {
+                "${it.symbol} - ${it.name}" + if (it.verified) " ✓" else ""
+            }.toTypedArray()
+            AlertDialog.Builder(this)
+                .setTitle(if (isFrom) getString(R.string.seeker_wallet_swap_from_title) else getString(R.string.seeker_wallet_swap_to_title))
+                .setItems(labels) { _, which ->
+                    val token = results[which]
+                    val selected = SwapToken(token.mint, token.symbol, token.decimals)
+                    if (isFrom) selectSwapFrom(selected) else selectSwapTo(selected)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        } catch (error: Throwable) {
+            updateStatus(getString(R.string.seeker_wallet_token_search_failed, error.message ?: "search failed"))
+        }
     }
 
     private suspend fun refreshBalance(address: String, cluster: SolanaCluster) {
@@ -576,13 +589,12 @@ class SeekerWalletActivity : ComponentActivity() {
         const val LAMPORTS_PER_SOL = 1_000_000_000.0
         const val USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
         const val SKR_MINT = "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3"
+        const val SOL_MINT = "So11111111111111111111111111111111111111112"
+        val DEFAULT_FROM_TOKEN = SwapToken(SOL_MINT, "SOL", 9)
+        val DEFAULT_TO_TOKEN = SwapToken(USDC_MINT, "USDC", 6)
     }
 
-    private enum class SwapToken(val mint: String, val symbol: String, val decimals: Int) {
-        SOL("So11111111111111111111111111111111111111112", "SOL", 9),
-        USDC(USDC_MINT, "USDC", 6),
-        SKR(SKR_MINT, "SKR", 6);
-
+    private data class SwapToken(val mint: String, val symbol: String, val decimals: Int) {
         val multiplier: Double
             get() = Math.pow(10.0, decimals.toDouble())
     }
